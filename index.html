@@ -814,18 +814,24 @@
 
       function parseCSV(text) {
         const lines = text.trim().split("\n");
-        const headers = lines[0].split(",").map((h) => h.trim());
+
+        // normalize headers → lowercase + trimmed
+        const headers = lines[0].split(",").map((h) => h.trim().toLowerCase());
+
         const data = [];
 
         for (let i = 1; i < lines.length; i++) {
           const values = lines[i].split(",").map((v) => v.trim());
-          if (values.length === headers.length) {
-            const obj = {};
-            headers.forEach((header, index) => {
-              obj[header] = values[index] || null;
-            });
-            data.push(obj);
-          }
+          const row = {};
+
+          headers.forEach((h, idx) => {
+            row[h] = values[idx] || null;
+          });
+
+          data.push({
+            name: row.name || "Unknown",
+            phone: row.phone || "",
+          });
         }
 
         return data;
@@ -843,6 +849,7 @@
         try {
           uploadBtn.disabled = true;
           uploadBtn.innerHTML = '<span class="loading"></span> Creating...';
+          console.log("Uploading campaign with data:", csvData);
 
           const response = await fetch(`${API_BASE}/api/campaigns/upload`, {
             method: "POST",
@@ -939,7 +946,7 @@
 
         calls.forEach((call, index) => {
           const intents = parseIntents(call.feedback);
-
+          console.log("Calls data:", calls);
           const STATUS_LABELS = {
             pending: "Pending",
             calling: "Calling",

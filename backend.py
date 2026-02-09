@@ -823,7 +823,7 @@ async def make_call(campaign_id: str, call_record: dict):
             'From': phone,
             'CallerId': EXOTEL_CONFIG['CALLER_ID'],
             'Url': f"http://my.exotel.com/{EXOTEL_CONFIG['ACCOUNT_SID']}/exoml/start_voice/{EXOTEL_CONFIG['APP_SID']}",
-            'StatusCallback': 'https://b4ed-2402-a00-142-98d-b403-60b5-e90b-e612.ngrok-free.app/webhooks/status-callback',
+            'StatusCallback': 'https://campaign-call-backend.onrender.com/webhooks/status-callback',
             # 'StatusCallbackEvents[0]': 'terminal',
             'StatusCallbackContentType': 'application/json'
         }

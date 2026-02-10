@@ -343,22 +343,22 @@ async def webhook_session_start(request: Request):
         print("=== VoiceBot Session Start ===")
         # print(data)
 
-        call_sid = data.get("metadata", {}).get("call_sid")
+        # call_sid = data.get("metadata", {}).get("call_sid")
 
-        if call_sid:
-            with get_db() as conn:
-                cursor = conn.cursor()
-                cursor.execute(
-                    """
-                    UPDATE calls
-                    SET status = 'bot_connected',
-                        feedback = COALESCE(feedback, '') || '\nVoiceBot session started at ' || ?
-                    WHERE call_sid = ?
-                    """,
-                    (datetime.datetime.utcnow().isoformat(), call_sid)
-                )
-                conn.commit()
-                print(f"✓ Updated call {call_sid} - Bot connected")
+        # if call_sid:
+        #     with get_db() as conn:
+        #         cursor = conn.cursor()
+        #         cursor.execute(
+        #             """
+        #             UPDATE calls
+        #             SET status = 'bot_connected',
+        #                 feedback = COALESCE(feedback, '') || '\nVoiceBot session started at ' || ?
+        #             WHERE call_sid = ?
+        #             """,
+        #             (datetime.datetime.utcnow().isoformat(), call_sid)
+        #         )
+        #         conn.commit()
+        #         print(f"✓ Updated call {call_sid} - Bot connected")
 
         body = {
             "http_code": 200,

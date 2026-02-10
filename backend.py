@@ -375,9 +375,12 @@ async def webhook_session_start(request: Request):
             content=
             {
                 "http_code": 200,
-                "method": "POST", 
+                "method": "POST",
                 "request_id": "any-string",
-                "data": {}
+                "response": {
+                    "http_code": 200,
+                    "data": {}
+                }
             }
         )
 

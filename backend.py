@@ -366,8 +366,8 @@ async def webhook_session_start(request: Request):
                 "data": {}
             }
         }
-        body = '{"http_code":200,"response":{"data":{}}}'
-        print("RAW RESPONSE BYTES:", repr(body))
+        # body = '{"http_code":200,"response":{"data":{}}}'
+        # print("RAW RESPONSE BYTES:", repr(body))
 
 
         return Response(

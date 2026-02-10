@@ -341,24 +341,24 @@ async def webhook_session_start(request: Request):
     try:
         data = await request.json()
         print("=== VoiceBot Session Start ===")
-        # print(data)
+        print(data)
 
-        # call_sid = data.get("metadata", {}).get("call_sid")
+        call_sid = data.get("metadata", {}).get("call_sid")
 
-        # if call_sid:
-        #     with get_db() as conn:
-        #         cursor = conn.cursor()
-        #         cursor.execute(
-        #             """
-        #             UPDATE calls
-        #             SET status = 'bot_connected',
-        #                 feedback = COALESCE(feedback, '') || '\nVoiceBot session started at ' || ?
-        #             WHERE call_sid = ?
-        #             """,
-        #             (datetime.datetime.utcnow().isoformat(), call_sid)
-        #         )
-        #         conn.commit()
-        #         print(f"✓ Updated call {call_sid} - Bot connected")
+        if call_sid:
+            with get_db() as conn:
+                cursor = conn.cursor()
+                cursor.execute(
+                    """
+                    UPDATE calls
+                    SET status = 'bot_connected',
+                        feedback = COALESCE(feedback, '') || '\nVoiceBot session started at ' || ?
+                    WHERE call_sid = ?
+                    """,
+                    (datetime.datetime.utcnow().isoformat(), call_sid)
+                )
+                conn.commit()
+                print(f"✓ Updated call {call_sid} - Bot connected")
 
         body = {
             "http_code": 200,
@@ -374,12 +374,14 @@ async def webhook_session_start(request: Request):
             status_code=200,
             content=
             {
-                "http_code": 200,
-                "method": "POST",
-                "request_id": "any-string",
                 "response": {
                     "http_code": 200,
-                    "data": {}
+                    "method": "POST",
+                    "request_id": "any-string",
+                    "response": {
+                        "http_code": 200,
+                        "data": {}
+                    }
                 }
             }
         )

@@ -372,7 +372,13 @@ async def webhook_session_start(request: Request):
 
         return JSONResponse(
             status_code=200,
-            content={"http_code": 200, "response": {"data": {}}}
+            content=
+            {
+                "http_code": 200,
+                "method": "POST", 
+                "request_id": "any-string",
+                "data": {}
+            }
         )
 
     except Exception as e:

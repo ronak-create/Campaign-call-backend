@@ -370,10 +370,9 @@ async def webhook_session_start(request: Request):
         # print("RAW RESPONSE BYTES:", repr(body))
 
 
-        return Response(
-            content=body,
+        return JSONResponse(
             status_code=200,
-            media_type="application/json"
+            content={"http_code": 200, "response": {"data": {}}}
         )
 
     except Exception as e:

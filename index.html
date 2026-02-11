@@ -197,7 +197,8 @@
         display: none;
       }
 
-      .form-input {
+      .form-input,
+      .form-select {
         width: 100%;
         padding: 10px 12px;
         border: 1px solid #e5e7eb;
@@ -206,9 +207,12 @@
         font-family: inherit;
         margin-top: 16px;
         transition: all 0.15s;
+        background: var(--bg-elevated);
+        color: var(--text);
       }
 
-      .form-input:focus {
+      .form-input:focus,
+      .form-select:focus {
         outline: none;
         border-color: #2563eb;
         box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
@@ -337,12 +341,59 @@
         padding: 16px 20px;
         border-bottom: 1px solid #e5e7eb;
         background: #f9fafb;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
       }
 
       .table-title {
         font-size: 16px;
         font-weight: 600;
         color: #111827;
+      }
+
+      .table-filters {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+      }
+
+      .filter-group {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .filter-label {
+        font-size: 13px;
+        color: #6b7280;
+        font-weight: 500;
+      }
+
+      .filter-select {
+        padding: 6px 12px;
+        border: 1px solid #e5e7eb;
+        border-radius: 6px;
+        font-size: 13px;
+        font-family: inherit;
+        background: var(--bg-elevated);
+        color: var(--text);
+        cursor: pointer;
+        min-width: 180px;
+      }
+
+      .filter-select:focus {
+        outline: none;
+        border-color: #2563eb;
+        box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
+      }
+
+      .filter-count {
+        font-size: 13px;
+        color: #6b7280;
+        padding: 6px 12px;
+        background: #f3f4f6;
+        border-radius: 6px;
       }
 
       .table-container {
@@ -388,6 +439,10 @@
 
       tbody tr:last-child td {
         border-bottom: none;
+      }
+
+      tbody tr.hidden {
+        display: none;
       }
 
       /* Status Badges */
@@ -583,6 +638,7 @@
       }
       .app-name,
       .card-title,
+      .table-title,
       td {
         color: var(--text);
       }
@@ -710,6 +766,18 @@
           <div class="table-section">
             <div class="table-header">
               <div class="table-title">Call Records</div>
+              <div class="table-filters">
+                <div class="filter-group">
+                  <label class="filter-label" for="statusFilter">Filter:</label>
+                  <select id="statusFilter" class="filter-select">
+                    <option value="all">All Calls</option>
+                    <option value="completed">Completed</option>
+                    <option value="missed">Missed</option>
+                    <option value="completed_interested">Completed & Interested</option>
+                  </select>
+                </div>
+                <span class="filter-count" id="filterCount">0 rows</span>
+              </div>
             </div>
             <div class="table-container">
               <table>
@@ -750,6 +818,7 @@
       let currentCampaignId = null;
       let pollInterval = null;
       let csvData = null;
+      let allCalls = []; // Store all calls for filtering
 
       // DOM Elements
       const uploadSection = document.getElementById("uploadSection");
@@ -766,6 +835,8 @@
       const downloadBtn = document.getElementById("downloadBtn");
       const callsTableBody = document.getElementById("callsTableBody");
       const statusIndicator = document.getElementById("statusIndicator");
+      const statusFilter = document.getElementById("statusFilter");
+      const filterCount = document.getElementById("filterCount");
 
       // Upload Zone Events
       uploadZone.addEventListener("click", () => fileInput.click());
@@ -897,6 +968,7 @@
           document.getElementById("campaignMeta").textContent =
             `Created: ${new Date(data.campaign.created_at).toLocaleString()}`;
 
+          allCalls = data.calls; // Store all calls
           updateCallsTable(data.calls);
           updateStats(campaignId);
 
@@ -939,11 +1011,40 @@
         return match[1].split(",").map((i) => i.trim());
       }
 
+      function getFilteredCalls() {
+        const filterValue = statusFilter.value;
+        
+        if (filterValue === "all") {
+          return allCalls;
+        } else if (filterValue === "completed") {
+          return allCalls.filter(call => 
+            call.status === "completed" || 
+            call.status === "bot_end" || 
+            call.status === "user_end"
+          );
+        } else if (filterValue === "missed") {
+          return allCalls.filter(call => call.status === "missed");
+        } else if (filterValue === "completed_interested") {
+          return allCalls.filter(call => {
+            const isCompleted = call.status === "completed" || 
+                                call.status === "bot_end" || 
+                                call.status === "user_end";
+            const isInterested = call.interested && 
+                                 call.interested.toLowerCase() === "yes";
+            return isCompleted && isInterested;
+          });
+        }
+        
+        return allCalls;
+      }
+
       function updateCallsTable(calls) {
+        allCalls = calls; // Update stored calls
+        const filteredCalls = getFilteredCalls();
+        
         callsTableBody.innerHTML = "";
 
-        calls.forEach((call, index) => {
-          console.log("Calls data:", calls);
+        filteredCalls.forEach((call, index) => {
           const STATUS_LABELS = {
             pending: "Pending",
             calling: "Calling",
@@ -960,6 +1061,10 @@
           let displayStatus = STATUS_LABELS[call.status] || call.status;
 
           const row = document.createElement("tr");
+          row.setAttribute("data-call-id", call.id || index);
+          row.setAttribute("data-status", call.status);
+          row.setAttribute("data-interested", call.interested || "");
+          
           row.innerHTML = `
             <td>${index + 1}</td>
             <td>${call.name}</td>
@@ -974,7 +1079,15 @@
           `;
           callsTableBody.appendChild(row);
         });
+
+        // Update filter count
+        filterCount.textContent = `${filteredCalls.length} rows`;
       }
+
+      // Filter change event
+      statusFilter.addEventListener("change", () => {
+        updateCallsTable(allCalls);
+      });
 
       async function updateStats(campaignId) {
         try {
@@ -1119,6 +1232,7 @@
           campaignNameInput.value = "";
           uploadBtn.style.display = "none";
           csvData = null;
+          allCalls = [];
         } catch (error) {
           console.error("Delete error:", error);
           showAlert("Failed to delete campaign", "error");
@@ -1131,6 +1245,14 @@
         if (!currentCampaignId) return;
 
         try {
+          // Get filtered calls based on current filter
+          const filteredCalls = getFilteredCalls();
+
+          if (filteredCalls.length === 0) {
+            showAlert("No data to download with current filter", "error");
+            return;
+          }
+
           const response = await fetch(
             `${API_BASE}/api/campaigns/${currentCampaignId}`,
           );
@@ -1151,22 +1273,21 @@
             "Error Message",
           ];
 
-          const rows = data.calls.map((call, index) => {
-            const intents = parseIntents(call.feedback);
+          const STATUS_LABELS = {
+            pending: "Pending",
+            calling: "Calling",
+            bot_connected: "Bot Connected",
+            user_connected: "User Connected",
+            bot_end: "Bot Ended",
+            user_end: "User Ended",
+            completed: "Completed",
+            failed: "Failed",
+            missed: "Missed",
+            rejected: "Rejected",
+          };
 
-            const STATUS_LABELS = {
-              pending: "Pending",
-              calling: "Calling",
-              bot_connected: "Bot Connected",
-              user_connected: "User Connected",
-              bot_end: "Bot Ended",
-              user_end: "User Ended",
-              completed: "Completed",
-              failed: "Failed",
-              missed: "Missed",
-              rejected: "Rejected",
-            };
-
+          // Only export filtered calls
+          const rows = filteredCalls.map((call, index) => {
             let displayStatus = STATUS_LABELS[call.status] || call.status;
 
             return [
@@ -1210,16 +1331,17 @@
             .replace(/[^a-z0-9]/gi, "_")
             .toLowerCase();
           const timestamp = new Date().toISOString().split("T")[0];
+          const filterSuffix = statusFilter.value !== "all" ? `_${statusFilter.value}` : "";
 
           link.setAttribute("href", url);
-          link.setAttribute("download", `${campaignName}_${timestamp}.csv`);
+          link.setAttribute("download", `${campaignName}${filterSuffix}_${timestamp}.csv`);
           link.style.visibility = "hidden";
 
           document.body.appendChild(link);
           link.click();
           document.body.removeChild(link);
 
-          showAlert("CSV downloaded successfully", "success");
+          showAlert(`CSV downloaded successfully (${filteredCalls.length} rows)`, "success");
         } catch (error) {
           console.error("Download error:", error);
           showAlert("Failed to download CSV", "error");

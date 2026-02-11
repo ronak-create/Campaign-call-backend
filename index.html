@@ -721,11 +721,8 @@
                     <th>Status</th>
                     <th>Timestamp</th>
                     <th>Duration</th>
-                    <th>Intent 1</th>
-                    <th>Intent 2</th>
-                    <th>Intent 3</th>
-                    <th>Intent 4</th>
-                    <th>Intent 5</th>
+                    <th>City</th>
+                    <th>Interested</th>
                     <th>Feedback</th>
                     <th>Recording</th>
                   </tr>
@@ -748,7 +745,8 @@
     </div>
 
     <script>
-      const API_BASE = "https://campaign-call-backend.onrender.com";
+      // const API_BASE = "https://campaign-call-backend.onrender.com";
+      const API_BASE = "http://localhost:8000";
       let currentCampaignId = null;
       let pollInterval = null;
       let csvData = null;
@@ -945,7 +943,6 @@
         callsTableBody.innerHTML = "";
 
         calls.forEach((call, index) => {
-          const intents = parseIntents(call.feedback);
           console.log("Calls data:", calls);
           const STATUS_LABELS = {
             pending: "Pending",
@@ -970,11 +967,8 @@
             <td><span class="status-badge status-${call.status}">${displayStatus}</span></td>
             <td>${call.timestamp ? new Date(call.timestamp).toLocaleString() : "--"}</td>
             <td>${call.duration ? call.duration + "s" : "--"}</td>
-            <td class="truncate" title="${intents[0] || ""}">${intents[0] || "--"}</td>
-            <td class="truncate" title="${intents[1] || ""}">${intents[1] || "--"}</td>
-            <td class="truncate" title="${intents[2] || ""}">${intents[2] || "--"}</td>
-            <td class="truncate" title="${intents[3] || ""}">${intents[3] || "--"}</td>
-            <td class="truncate" title="${intents[4] || ""}">${intents[4] || "--"}</td>
+            <td>${call.preferred_city || "--"}</td>
+            <td>${call.interested || "--"}</td>
             <td class="truncate" title="${call.feedback || "--"}">${call.feedback ? call.feedback.substring(0, 50) + "..." : "--"}</td>
             <td>${call.recording_url ? `<a href="${call.recording_url}" target="_blank" class="recording-link">Listen</a>` : "--"}</td>
           `;
@@ -1149,11 +1143,8 @@
             "Status",
             "Timestamp",
             "Duration",
-            "Intent 1",
-            "Intent 2",
-            "Intent 3",
-            "Intent 4",
-            "Intent 5",
+            "City",
+            "Interested",
             "Feedback",
             "Recording URL",
             "Call SID",
@@ -1185,11 +1176,8 @@
               displayStatus || "",
               call.timestamp ? new Date(call.timestamp).toLocaleString() : "",
               call.duration || "",
-              intents[0] || "",
-              intents[1] || "",
-              intents[2] || "",
-              intents[3] || "",
-              intents[4] || "",
+              call.preferred_city || "",
+              call.interested || "",
               call.feedback || "",
               call.recording_url || "",
               call.call_sid || "",

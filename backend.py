@@ -1,4 +1,5 @@
 import os
+import time
 from fastapi import FastAPI, Request, HTTPException, BackgroundTasks
 from fastapi.responses import JSONResponse, Response
 from fastapi.middleware.cors import CORSMiddleware
@@ -11,6 +12,7 @@ import asyncio
 from requests.auth import HTTPBasicAuth
 import requests
 import uuid
+from datetime import datetime as dt, timezone
 from contextlib import contextmanager
 import xml.etree.ElementTree as ET
 
@@ -86,9 +88,13 @@ def init_db():
                 timestamp TEXT,
                 recording_url TEXT,
                 call_sid TEXT,
+                conversation_id TEXT,
                 duration INTEGER,
                 error_message TEXT,
                 retry_count INTEGER DEFAULT 0,
+                preferred_city TEXT,
+                interested TEXT,
+                conversation_id TEXT,
                 FOREIGN KEY (campaign_id) REFERENCES campaigns(id)
             )
         ''')
@@ -128,75 +134,6 @@ class CampaignResponse(BaseModel):
     completed_calls: int
     failed_calls: int
     created_at: str
-
-def get_intent_from_conversation(conversation_id):
-    """
-    Fetch intents by scanning conversation list
-    (single conversation endpoint is unreliable in Exotel)
-    """
-
-    url = f"https://voicebot.in.exotel.com/voicebot/api/v2/accounts/{EXOTEL_CONFIG['ACCOUNT_SID']}/voicebot-conversations"
-
-    params = {
-        "fields": "insights",
-        "limit": 100
-    }
-
-    response = requests.get(
-        url,
-        params=params,
-        auth=HTTPBasicAuth(EXOTEL_CONFIG['API_KEY'], EXOTEL_CONFIG['API_TOKEN']),
-        timeout=10
-    )
-    response.raise_for_status()
-
-    data = response.json()
-
-    conversations = data.get("response", [])
-
-    for item in conversations:
-        conv = item.get("data", {})
-        if conv.get("conversation_id") == conversation_id:
-            insights = conv.get("insights", {})
-            intents_raw = insights.get("intents")
-
-            if not intents_raw:
-                return {
-                    "conversation_id": conversation_id,
-                    "intents": [],
-                    "sentiment": insights.get("sentiment", {}).get("value"),
-                    "outcome": conv.get("outcome")
-                }
-
-            intents = [i.strip() for i in intents_raw.split(",")]
-
-            return {
-                "conversation_id": conversation_id,
-                "call_sid": conv.get("call_sid"),
-                "intents": intents,
-                "sentiment": insights.get("sentiment", {}).get("value"),
-                "outcome": conv.get("outcome")
-            }
-
-    return {"error": "conversation_id not found"}
-
-async def fetch_intents_with_retry(conversation_id: str, retries=4, delay=4):
-    """
-    Retry fetching intents because Exotel insights are eventually consistent.
-    """
-    for attempt in range(1, retries + 1):
-        print(f"⏳ Fetching intents (attempt {attempt}/{retries}) for {conversation_id}")
-        
-        intents_info = get_intent_from_conversation(conversation_id)
-
-        if intents_info.get("intents"):
-            print("✅ Intents found:", intents_info)
-            return intents_info
-
-        await asyncio.sleep(delay)
-
-    print("⚠ No intents found after retries")
-    return intents_info
 
 
 # Initialize DB on startup
@@ -255,87 +192,6 @@ def get_config():
         "fetch_delay": CALL_DETAILS_FETCH_DELAY
     }
 
-@app.get("/passthru")
-async def passthru(request: Request):
-    """Exotel passthru endpoint - called when call is transferred to human"""
-    params = dict(request.query_params)
-    
-    print("=== Exotel Passthru Event ===")
-    for k, v in params.items():
-        print(f"{k}: {v}")
-    
-    call_sid = params.get('CallSid')
-    status = params.get('Status')
-    
-    if call_sid:
-        with get_db() as conn:
-            cursor = conn.cursor()
-            cursor.execute('''
-                UPDATE calls 
-                SET status = 'transferred', timestamp = ?,
-                    feedback = feedback || '\nTransferred to human'
-                WHERE call_sid = ?
-            ''', (datetime.datetime.utcnow().isoformat(), call_sid))
-            conn.commit()
-            print(f"✓ Updated call {call_sid} with transfer event")
-    
-    return JSONResponse(
-        status_code=200,
-        content={
-            "status": "ok",
-            "received_at": datetime.datetime.utcnow().isoformat()
-        }
-    )
-
-# @app.post("/webhooks/session-start")
-# async def webhook_session_start(request: Request):
-#     """VoiceBot webhook - triggered when voicebot session starts"""
-#     try:
-#         data = await request.json()
-#         print(data)
-#         print("=== VoiceBot Session Start ===")
-#         print(f"Session ID: {data.get('session_id')}")
-#         print(f"Call SID: {data.get('metadata', {}).get('call_sid')}")
-        
-#         call_sid = data.get('metadata', {}).get('call_sid')
-        
-#         if call_sid:
-#             with get_db() as conn:
-#                 cursor = conn.cursor()
-#                 cursor.execute('''
-#                     UPDATE calls 
-#                     SET status = 'bot_connected',
-#                         feedback = COALESCE(feedback, '') || '\nVoiceBot session started at ' || ?
-#                     WHERE call_sid = ?
-#                 ''', (datetime.datetime.utcnow().isoformat(), call_sid))
-#                 conn.commit()
-#                 print(f"✓ Updated call {call_sid} - Bot connected")
-        
-#         return JSONResponse(
-#             status_code=200,
-#             content={
-#                 "http_code": 200,
-#                 "response": {
-#                     "data": {}
-#                 }
-#             }
-#         )
-#     except Exception as e:
-#         print(f"Error in session_start webhook: {e}")
-#         return JSONResponse(
-#             status_code=500,
-#             content={
-#                 "http_code": 500,
-#                 "response": {
-#                     "data": None,
-#                     "error_data": {
-#                         "error_code": "WH001",
-#                         "message": str(e),
-#                         "description": "Error processing session start"
-#                     }
-#                 }
-#             }
-#         )
 @app.post("/webhooks/session-start")
 async def webhook_session_start(request: Request):
     try:
@@ -432,22 +288,204 @@ async def webhook_transcript_events(request: Request):
         if not has_transcript:
             return JSONResponse(status_code=200, content={"http_code": 200})
 
+        call_sid = data.get("external_id")
+        current_conversation_id = data.get("conversation_id")
+        previous_sessions = data.get("previous_sessions", {}).get("sessions", [])
+
         with get_db() as conn:
             cursor = conn.cursor()
 
-            # Read current status
+            # ✅ Update current call as bot_connected
+            if call_sid:
+                cursor.execute(
+                    """
+                    UPDATE calls
+                    SET status = 'bot_connected',
+                    conversation_id = COALESCE(conversation_id, ?),
+                        feedback = COALESCE(feedback, '') || '\nVoiceBot session started at ' || ?
+                    WHERE call_sid = ?
+                    """,
+                    (current_conversation_id,datetime.datetime.utcnow().isoformat(), call_sid)
+                )
+
+            # ✅ Now process previous sessions safely
+            for session in previous_sessions:
+                conversation_id = session.get("conversation_id")
+
+                if not conversation_id:
+                    continue
+
+                # Check if this conversation exists in DB
+                cursor.execute(
+                    "SELECT id FROM calls WHERE conversation_id = ?",
+                    (conversation_id,)
+                )
+                existing_call = cursor.fetchone()
+
+                if not existing_call:
+                    continue  # not our call
+
+                print(f"✓ Matched previous session for conversation_id: {conversation_id}")
+
+                # 🔹 Get justification
+                justification = session.get("call_outcome", {}).get("justification", "")
+
+                # 🔹 Check intents
+                intents = session.get("intents", [])
+                interested = "no"
+
+                for intent_obj in intents:
+                    intent_name = intent_obj.get("intent", "").replace(" ", "")
+                    if intent_name == "RIDER_RESEARCH":
+                        interested = "yes"  
+                        break
+
+                # 🔹 Update DB
+                cursor.execute(
+                    """
+                    UPDATE calls
+                    SET feedback = COALESCE(feedback, '') || ?,
+                        interested = ?
+                    WHERE conversation_id = ?
+                    """,
+                    (
+                        "\nJustification: " + justification,
+                        interested,
+                        conversation_id
+                    )
+                )
+
+                print(f"✓ Updated justification & interested for {conversation_id}")
+
+            conn.commit()
+
+        return JSONResponse(
+            status_code=200,
+            content=
+            {
+                "response": {
+                    "http_code": 200,
+                    "method": "POST",
+                    "request_id": "any-string",
+                    "response": {
+                        "http_code": 200,
+                        "data": {}
+                    }
+                }
+            }
+        )
+
+    except Exception as e:
+        print("Session start error:", e)
+        return JSONResponse(status_code=200, content={"http_code": 200})
+
+    
+import re
+
+CITY_ALIASES = {
+    "Vadodara": ["vadodara", "baroda", "बड़ौदा", "વડોદરા", "वड़ोदरा", "बड़ोदरा", "वडोदरा"],
+    "Ahmedabad": ["ahmedabad", "amdavad", "ahemdabad", "અમદાવાદ"],
+    "Surat": ["surat", "સુરત"],
+    "Rajkot": ["rajkot", "રાજકોટ"],
+    "Mumbai": ["mumbai", "bombay", "मुंबई"],
+    "Delhi": ["delhi", "दिल्ली"],
+    "Bengaluru": ["bengaluru", "bangalore", "बेंगलुरु"],
+    "Pune": ["pune", "पुणे"],
+    "Chennai": ["chennai", "चेन्नई"],
+    "Hyderabad": ["hyderabad", "हैदराबाद"],
+    "Kolkata": ["kolkata", "calcutta", "कोलकाता"],
+}
+
+def city_match(text: str, name: str) -> bool:
+    text = text.lower()
+    name = name.lower()
+
+    # Hindi / Gujarati / non-ASCII → simple substring match
+    if not name.isascii():
+        return name in text
+
+    # English → word-boundary regex
+    return re.search(rf"\b{re.escape(name)}\b", text) is not None
+
+
+def extract_preferred_city_from_events(events):
+    texts = []
+
+    for event in events:
+        if event.get("event_type") != "transcript":
+            continue
+
+        event_data = event.get("event_data", {})
+        segments = event_data.get("transcript_segments", [])
+        # print("segments", segments)
+
+        for seg in segments:
+            # user can be "customer" OR "user"
+            if seg.get("speaker") in ("customer", "user"):
+                texts.append(seg.get("text", ""))
+
+    # print("texts", texts)
+
+    combined = " ".join(texts).lower()
+    # print("Combined transcript text for city extraction:", combined)
+
+    for city, aliases in CITY_ALIASES.items():
+        for name in aliases:
+            if city_match(combined, name):
+                # print(f"✓ Preferred city extracted: {city} (matched '{name}')")
+                return city
+
+    return None
+
+
+
+@app.post("/webhooks/transcript-events")
+async def webhook_transcript_events(request: Request):
+    try:
+        data = await request.json()
+        # print("data", data)
+        # print(data)
+        call_sid = data.get("external_id", {})
+        events = data.get("events", [])
+        # print(f"Transcript events received for call_sid/conversation id: {call_sid}, total events: {len(events)}")
+        if not call_sid or not events:
+            return JSONResponse(status_code=200, content={"http_code": 200})
+        # print("events", events)
+        has_transcript = any(
+            e.get("event_type") == "transcript" for e in events
+        )
+        if not has_transcript:
+            return JSONResponse(status_code=200, content={"http_code": 200})
+        # print(f"✓ Transcript event received for call_sid: {call_sid}")
+        preferred_city = extract_preferred_city_from_events(events)
+        # print(f"Preferred city: {preferred_city}")
+        with get_db() as conn:
+            cursor = conn.cursor()
+
+            # Save city (idempotent)
+            if preferred_city:
+                print(f"Saving preferred city '{preferred_city}' for call {call_sid}")
+                cursor.execute(
+                    """
+                    UPDATE calls
+                    SET preferred_city = COALESCE(preferred_city, ?)
+                    WHERE call_sid = ?
+                    """,
+                    (preferred_city, call_sid)
+                )
+            
+            # Read status
             cursor.execute(
                 "SELECT status FROM calls WHERE call_sid = ?",
                 (call_sid,)
             )
             row = cursor.fetchone()
-
             if not row:
+                conn.commit()
                 return JSONResponse(status_code=200, content={"http_code": 200})
 
             current_status = row["status"]
 
-            # Update ONLY ONCE
             if current_status not in (
                 "bot_connected",
                 "user_connected",
@@ -468,8 +506,9 @@ async def webhook_transcript_events(request: Request):
                     """,
                     (datetime.datetime.utcnow().isoformat(), call_sid)
                 )
-                conn.commit()
-                print(f"✓ bot_connected set via transcript-events for {call_sid}")
+
+            conn.commit()
+            print(f"✓ transcript handled for {call_sid}")
 
         return JSONResponse(
             status_code=200,
@@ -483,47 +522,6 @@ async def webhook_transcript_events(request: Request):
             content={"http_code": 200, "response": {"data": {}}}
         )
 
-
-@app.post("/webhooks/pre-agent-transfer")
-async def webhook_pre_agent_transfer(request: Request):
-    """VoiceBot webhook - triggered before transferring to human agent"""
-    try:
-        data = await request.json()
-        
-        print("=== Pre-Agent Transfer ===")
-        print(f"Session ID: {data.get('session_id')}")
-        
-        call_sid = data.get('metadata', {}).get('call_sid')
-        
-        if call_sid:
-            with get_db() as conn:
-                cursor = conn.cursor()
-                cursor.execute('''
-                    UPDATE calls 
-                    SET status = 'user_connected',
-                        feedback = COALESCE(feedback, '') || '\nTransferring to agent at ' || ?
-                    WHERE call_sid = ?
-                ''', (datetime.datetime.utcnow().isoformat(), call_sid))
-                conn.commit()
-                print(f"✓ Updated call {call_sid} - User connected")
-        
-        return JSONResponse(
-            status_code=200,
-            content={
-                "http_code": 200,
-                "response": {
-                    "data": {
-                        "agent_transfer_message": {
-                            "text": "Please hold while I connect you to our support team."
-                        }
-                    }
-                }
-            }
-        )
-    except Exception as e:
-        print(f"Error in pre_agent_transfer webhook: {e}")
-        return JSONResponse(status_code=200, content={"http_code": 200, "response": {"data": {}}})
-
 @app.post("/webhooks/session-end")
 async def webhook_session_end(request: Request):
     """VoiceBot webhook - triggered when voicebot session ends"""
@@ -532,14 +530,25 @@ async def webhook_session_end(request: Request):
         
         print("=== VoiceBot Session End ===")
         print(f"Session ID: {data.get('session_id')}")
+        # print(data)
         
         call_sid = data.get('metadata', {}).get('call_sid')
 
-        
+        # ✅ Calculate duration from start_time & end_time
+        start_time_str = data.get("start_time")
+        end_time_str = data.get("end_time")
+        duration_seconds = 0
+
+        if start_time_str and end_time_str:
+            start_time = dt.fromisoformat(start_time_str.replace("Z", "+00:00"))
+            end_time = dt.fromisoformat(end_time_str.replace("Z", "+00:00"))
+            duration_seconds = int((end_time - start_time).total_seconds())
+
         if call_sid:
             with get_db() as conn:
                 cursor = conn.cursor()
-                # Check current status - if user was connected, mark as user_end, otherwise bot_end
+
+                # Check current status
                 cursor.execute('SELECT status FROM calls WHERE call_sid = ?', (call_sid,))
                 current = cursor.fetchone()
                 
@@ -551,17 +560,16 @@ async def webhook_session_end(request: Request):
                 cursor.execute('''
                     UPDATE calls 
                     SET status = ?,
-                        feedback = COALESCE(feedback, '') || '\nSession ended at ' || ?
+                        duration = ?,
                     WHERE call_sid = ?
-                ''', (new_status, datetime.datetime.utcnow().isoformat(), call_sid))
-                conn.commit()
-                print(f"✓ Updated call {call_sid} - Session ended ({new_status})")
+                ''', (
+                    new_status,
+                    duration_seconds,
+                    call_sid
+                ))
 
-        # conversation_id = data.get("conversation_id")
-        # if conversation_id:
-        #     asyncio.create_task(
-        #         fetch_intents_with_retry(conversation_id)
-        #     )
+                conn.commit()
+                print(f"✓ Updated call {call_sid} - Session ended ({new_status}) | Duration: {duration_seconds}s")
         
         return JSONResponse(
             status_code=200,
@@ -572,6 +580,7 @@ async def webhook_session_end(request: Request):
                 }
             }
         )
+
     except Exception as e:
         print(f"Error in session_end webhook: {e}")
         return JSONResponse(status_code=200, content={"http_code": 200, "response": {"data": {}}})
@@ -712,6 +721,7 @@ async def get_campaign(campaign_id: str):
             ORDER BY id ASC
         ''', (campaign_id,))
         calls = [dict(row) for row in cursor.fetchall()]
+        # print(calls)
         
         cursor.execute('SELECT * FROM campaign_state WHERE campaign_id = ?', (campaign_id,))
         state = cursor.fetchone()
@@ -824,17 +834,11 @@ async def make_call(campaign_id: str, call_record: dict):
     try:
         url = f"https://{EXOTEL_CONFIG['API_KEY']}:{EXOTEL_CONFIG['API_TOKEN']}@{EXOTEL_CONFIG['SUBDOMAIN']}/v1/Accounts/{EXOTEL_CONFIG['ACCOUNT_SID']}/Calls/connect"
         
-        # data = {
-        #     'From': phone,
-        #     'CallerId': EXOTEL_CONFIG['CALLER_ID'],
-        #     'Url': f"http://my.exotel.com/{EXOTEL_CONFIG['ACCOUNT_SID']}/exoml/start_voice/{EXOTEL_CONFIG['APP_SID']}"
-        # }
         data = {
             'From': phone,
             'CallerId': EXOTEL_CONFIG['CALLER_ID'],
             'Url': f"http://my.exotel.com/{EXOTEL_CONFIG['ACCOUNT_SID']}/exoml/start_voice/{EXOTEL_CONFIG['APP_SID']}",
             'StatusCallback': 'https://campaign-call-backend.onrender.com/webhooks/status-callback',
-            # 'StatusCallbackEvents[0]': 'terminal',
             'StatusCallbackContentType': 'application/json'
         }
 
@@ -866,8 +870,6 @@ async def make_call(campaign_id: str, call_record: dict):
             ''', (call_sid, call_id))
             conn.commit()
         
-        # await asyncio.sleep(CALL_DETAILS_FETCH_DELAY)
-        # await fetch_call_details(campaign_id, call_id, call_sid)
         
     except requests.exceptions.RequestException as e:
         error_msg = str(e)
@@ -927,7 +929,8 @@ async def exotel_status_callback(request: Request):
     call_sid = payload.get("CallSid")
     status = payload.get("Status")
     recording_url = payload.get("RecordingUrl")
-    duration = payload.get("ConversationDuration", 0)
+    # Try multiple duration fields that Exotel might     use
+
 
     status_mapping = {
         "completed": "completed",
@@ -959,13 +962,11 @@ async def exotel_status_callback(request: Request):
             UPDATE calls
             SET status = ?,
                 recording_url = COALESCE(?, recording_url),
-                duration = ?,
                 timestamp = ?
             WHERE call_sid = ?
         """, (
             final_status,
             recording_url,
-            duration,
             datetime.datetime.utcnow().isoformat(),
             call_sid
         ))

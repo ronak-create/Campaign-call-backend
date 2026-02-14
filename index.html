@@ -1,0 +1,1287 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Campaign Manager</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg: #ffffff;
+        --bg-soft: #f9fafb;
+        --bg-elevated: #ffffff;
+        --border: #e5e7eb;
+        --text: #111827;
+        --text-muted: #6b7280;
+        --primary: #2563eb;
+        --hover-bg: #f3f4f6;
+        --hover-bg-soft: #eef2ff;
+        --hover-border: #d1d5db;
+      }
+
+      body.dark {
+        --bg: #0b0f19;
+        --bg-soft: #111827;
+        --bg-elevated: #0f172a;
+        --border: #1f2933;
+        --text: #e5e7eb;
+        --text-muted: #9ca3af;
+        --primary: #3b82f6;
+        --hover-bg: #1f2937;
+        --hover-bg-soft: #1e293b;
+        --hover-border: #374151;
+      }
+
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family:
+          "Inter",
+          system-ui,
+          -apple-system,
+          sans-serif;
+        background: var(--bg);
+        color: var(--text);
+        line-height: 1.5;
+      }
+
+      .container {
+        max-width: 1400px;
+        margin: 0 auto;
+        padding: 0;
+      }
+
+      /* Top Navigation */
+      .top-nav {
+        background: #ffffff;
+        border-bottom: 1px solid #e5e7eb;
+        padding: 16px 24px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        position: sticky;
+        top: 0;
+        z-index: 100;
+      }
+
+      .app-name {
+        font-size: 18px;
+        font-weight: 600;
+        color: #111827;
+      }
+
+      .nav-actions {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+      }
+
+      /* Buttons */
+      .btn {
+        padding: 8px 16px;
+        border: 1px solid #e5e7eb;
+        background: #ffffff;
+        color: #111827;
+        font-size: 14px;
+        font-weight: 500;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: all 0.15s;
+        font-family: inherit;
+      }
+
+      .btn:hover:not(:disabled) {
+        background: var(--hover-bg);
+        border-color: var(--hover-border);
+      }
+
+      .btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+
+      .btn-primary {
+        background: #2563eb;
+        color: #ffffff;
+        border-color: #2563eb;
+      }
+
+      .btn-primary:hover:not(:disabled) {
+        background: color-mix(in srgb, var(--primary) 85%, black);
+        border-color: color-mix(in srgb, var(--primary) 85%, black);
+      }
+
+      .btn-danger {
+        background: #dc2626;
+        color: #ffffff;
+        border-color: #dc2626;
+      }
+
+      .btn-danger:hover:not(:disabled) {
+        background: #b91c1c;
+        border-color: #b91c1c;
+      }
+
+      .btn-sm {
+        padding: 6px 12px;
+        font-size: 13px;
+      }
+
+      /* Main Content */
+      .main-content {
+        padding: 24px;
+      }
+
+      /* Cards */
+      .card {
+        background: #f9fafb;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        padding: 24px;
+        margin-bottom: 24px;
+      }
+
+      .card-title {
+        font-size: 16px;
+        font-weight: 600;
+        color: #111827;
+        margin-bottom: 16px;
+      }
+
+      /* Upload Section */
+      .upload-zone {
+        border: 2px dashed #e5e7eb;
+        border-radius: 8px;
+        padding: 48px 24px;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.2s;
+        background: #ffffff;
+      }
+
+      .upload-zone:hover {
+        background: var(--hover-bg-soft);
+        border-color: var(--primary);
+      }
+
+      .upload-zone.dragover {
+        background: var(--hover-bg-soft);
+        border-color: var(--primary);
+      }
+
+      .upload-icon {
+        font-size: 32px;
+        margin-bottom: 12px;
+        color: #6b7280;
+      }
+
+      .upload-text {
+        font-size: 14px;
+        color: #6b7280;
+        margin-bottom: 8px;
+      }
+
+      .upload-subtext {
+        font-size: 13px;
+        color: #9ca3af;
+      }
+
+      input[type="file"] {
+        display: none;
+      }
+
+      .form-input {
+        width: 100%;
+        padding: 10px 12px;
+        border: 1px solid #e5e7eb;
+        border-radius: 6px;
+        font-size: 14px;
+        font-family: inherit;
+        margin-top: 16px;
+        transition: all 0.15s;
+      }
+
+      .form-input:focus {
+        outline: none;
+        border-color: #2563eb;
+        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+      }
+
+      .form-input::placeholder {
+        color: #9ca3af;
+      }
+
+      /* Stats Grid */
+      .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 16px;
+        margin-bottom: 24px;
+      }
+
+      .stat-card {
+        background: #f9fafb;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        padding: 20px;
+      }
+
+      .stat-label {
+        font-size: 13px;
+        color: #6b7280;
+        font-weight: 500;
+        margin-bottom: 8px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+
+      .stat-value {
+        font-size: 32px;
+        font-weight: 700;
+        color: #111827;
+        line-height: 1;
+      }
+
+      .stat-value.success {
+        color: #16a34a;
+      }
+
+      .stat-value.danger {
+        color: #dc2626;
+      }
+
+      .stat-value.warning {
+        color: #d97706;
+      }
+
+      .stat-value.primary {
+        color: #2563eb;
+      }
+
+      /* Progress Bar */
+      .progress-container {
+        margin-bottom: 24px;
+        background: #f9fafb;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        padding: 16px;
+      }
+
+      .progress-label {
+        font-size: 13px;
+        color: #6b7280;
+        margin-bottom: 8px;
+        display: flex;
+        justify-content: space-between;
+      }
+
+      .progress-bar-track {
+        height: 8px;
+        background: #e5e7eb;
+        border-radius: 4px;
+        overflow: hidden;
+      }
+
+      .progress-bar-fill {
+        height: 100%;
+        background: #2563eb;
+        transition: width 0.3s ease;
+        border-radius: 4px;
+      }
+
+      /* Campaign Info */
+      .campaign-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 24px;
+        padding: 20px;
+        background: #f9fafb;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+      }
+
+      .campaign-info h2 {
+        font-size: 20px;
+        font-weight: 600;
+        color: var(--text);
+        margin-bottom: 4px;
+      }
+
+      .campaign-meta {
+        font-size: 13px;
+        color: #6b7280;
+      }
+
+      .campaign-actions {
+        display: flex;
+        gap: 8px;
+      }
+
+      /* Table Section */
+      .table-section {
+        background: #ffffff;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        overflow: hidden;
+      }
+
+      .table-header {
+        padding: 16px 20px;
+        border-bottom: 1px solid #e5e7eb;
+        background: #f9fafb;
+      }
+
+      .table-title {
+        font-size: 16px;
+        font-weight: 600;
+        color: #111827;
+      }
+
+      .table-container {
+        overflow-x: auto;
+        max-height: 600px;
+        overflow-y: auto;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
+      }
+
+      thead {
+        position: sticky;
+        top: 0;
+        background: #f9fafb;
+        z-index: 10;
+      }
+
+      th {
+        padding: 12px 16px;
+        text-align: left;
+        font-weight: 600;
+        color: #6b7280;
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        border-bottom: 1px solid #e5e7eb;
+        white-space: nowrap;
+      }
+
+      td {
+        padding: 12px 16px;
+        border-bottom: 1px solid #e5e7eb;
+        color: #111827;
+      }
+
+      tbody tr:hover {
+        background: var(--hover-bg);
+      }
+
+      tbody tr:last-child td {
+        border-bottom: none;
+      }
+
+      /* Status Badges */
+      .status-badge {
+        display: inline-block;
+        padding: 4px 10px;
+        font-size: 11px;
+        font-weight: 600;
+        border-radius: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+      }
+
+      .status-pending {
+        background: #f3f4f6;
+        color: #6b7280;
+      }
+
+      .status-calling {
+        background: #fef3c7;
+        color: #d97706;
+      }
+
+      .status-bot_connected,
+      .status-voicebot_connected {
+        background: #dbeafe;
+        color: #2563eb;
+      }
+
+      .status-user_connected {
+        background: #d1fae5;
+        color: #16a34a;
+      }
+
+      .status-transferring_to_agent {
+        background: #fef3c7;
+        color: #d97706;
+      }
+
+      .status-completed,
+      .status-bot_end,
+      .status-user_end {
+        background: #d1fae5;
+        color: #16a34a;
+      }
+
+      .status-failed,
+      .status-rejected {
+        background: #fee2e2;
+        color: #dc2626;
+      }
+
+      .status-missed {
+        background: #fef3c7;
+        color: #d97706;
+      }
+
+      /* Empty State */
+      .empty-state {
+        text-align: center;
+        padding: 80px 40px;
+        color: #6b7280;
+      }
+
+      .empty-icon {
+        font-size: 48px;
+        margin-bottom: 16px;
+        opacity: 0.4;
+      }
+
+      .empty-text {
+        font-size: 16px;
+        font-weight: 500;
+        color: #111827;
+        margin-bottom: 8px;
+      }
+
+      .empty-subtext {
+        font-size: 14px;
+        color: #6b7280;
+      }
+
+      /* Alert */
+      .alert {
+        padding: 12px 16px;
+        margin-bottom: 16px;
+        border-radius: 6px;
+        font-size: 14px;
+        border: 1px solid;
+      }
+      .card:hover,
+      .stat-card:hover {
+        background: var(--hover-bg-soft);
+        transition: background 0.15s ease;
+      }
+
+      .alert-success {
+        background: #d1fae5;
+        border-color: #16a34a;
+        color: #15803d;
+      }
+
+      .alert-error {
+        background: #fee2e2;
+        border-color: #dc2626;
+        color: #b91c1c;
+      }
+
+      /* Links */
+      .recording-link {
+        color: #2563eb;
+        text-decoration: none;
+        font-weight: 500;
+      }
+
+      .recording-link:hover {
+        text-decoration: underline;
+        color: var(--primary);
+        opacity: 0.85;
+      }
+
+      /* Truncate */
+      .truncate {
+        max-width: 200px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .truncate:hover {
+        overflow: visible;
+        white-space: normal;
+      }
+
+      /* Loading */
+      .loading {
+        display: inline-block;
+        width: 16px;
+        height: 16px;
+        border: 2px solid #e5e7eb;
+        border-top-color: #2563eb;
+        border-radius: 50%;
+        animation: spin 0.6s linear infinite;
+      }
+
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+
+      .btn-upload-action {
+        margin-top: 16px;
+      }
+
+      /* Status indicator */
+      .status-indicator {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 13px;
+        color: #6b7280;
+      }
+
+      .status-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: #10b981;
+      }
+
+      .status-dot.inactive {
+        background: #6b7280;
+      }
+      .top-nav,
+      .card,
+      .stat-card,
+      .progress-container,
+      .campaign-header,
+      .table-section,
+      .upload-zone {
+        background: var(--bg-elevated);
+        border-color: var(--border);
+      }
+
+      .table-header,
+      thead {
+        background: var(--bg-soft);
+      }
+
+      th {
+        color: var(--text-muted);
+      }
+      .app-name,
+      .card-title,
+      td {
+        color: var(--text);
+      }
+
+      .form-input {
+        background: var(--bg-elevated);
+        border-color: var(--border);
+        color: var(--text);
+      }
+
+      .form-input::placeholder {
+        color: var(--text-muted);
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Top Navigation -->
+    <div class="top-nav">
+      <div class="app-name">Campaign Manager</div>
+      <div class="nav-actions">
+        <button class="btn btn-sm" id="themeToggle">🌙 Dark</button>
+        <div class="status-indicator" id="statusIndicator">
+          <span class="status-dot inactive"></span>
+          <span>No active campaign</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="container">
+      <div class="main-content">
+        <!-- Upload Section -->
+        <div id="uploadSection">
+          <div class="card">
+            <div class="card-title">Campaign Setup</div>
+
+            <div class="upload-zone" id="uploadZone">
+              <div class="upload-icon">📄</div>
+              <div class="upload-text">
+                Drop CSV file here or click to browse
+              </div>
+              <div class="upload-subtext">
+                Supported format: CSV with name, phone columns
+              </div>
+              <input type="file" id="fileInput" accept=".csv" />
+            </div>
+
+            <input
+              type="text"
+              id="campaignName"
+              class="form-input"
+              placeholder="Enter campaign name..."
+            />
+
+            <div
+              id="uploadStatus"
+              style="margin-top: 12px; font-size: 13px; color: #6b7280"
+            ></div>
+
+            <button
+              class="btn btn-primary btn-upload-action"
+              id="uploadBtn"
+              style="display: none"
+            >
+              Create Campaign
+            </button>
+          </div>
+        </div>
+
+        <!-- Campaign Section (Initially Hidden) -->
+        <div id="campaignSection" style="display: none">
+          <!-- Campaign Header -->
+          <div class="campaign-header">
+            <div class="campaign-info">
+              <h2 id="campaignTitle">Campaign Name</h2>
+              <div class="campaign-meta" id="campaignMeta">Created: --</div>
+            </div>
+            <div class="campaign-actions">
+              <button class="btn btn-primary" id="startBtn">
+                Start Campaign
+              </button>
+              <button class="btn" id="pauseBtn" style="display: none">
+                Pause
+              </button>
+              <button class="btn" id="downloadBtn">Download CSV</button>
+              <button class="btn btn-danger" id="deleteBtn">Delete</button>
+            </div>
+          </div>
+
+          <!-- Stats Grid -->
+          <div class="stats-grid">
+            <div class="stat-card">
+              <div class="stat-label">Total Calls</div>
+              <div class="stat-value primary" id="statTotal">0</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Completed</div>
+              <div class="stat-value success" id="statCompleted">0</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Failed</div>
+              <div class="stat-value danger" id="statFailed">0</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Pending</div>
+              <div class="stat-value warning" id="statPending">0</div>
+            </div>
+          </div>
+
+          <!-- Progress Bar -->
+          <div class="progress-container">
+            <div class="progress-label">
+              <span>Campaign Progress</span>
+              <span id="progressText">0%</span>
+            </div>
+            <div class="progress-bar-track">
+              <div
+                class="progress-bar-fill"
+                id="progressBar"
+                style="width: 0%"
+              ></div>
+            </div>
+          </div>
+
+          <!-- Data Table -->
+          <div class="table-section">
+            <div class="table-header">
+              <div class="table-title">Call Records</div>
+            </div>
+            <div class="table-container">
+              <table>
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>Name</th>
+                    <th>Phone</th>
+                    <th>Status</th>
+                    <th>Timestamp</th>
+                    <th>Duration</th>
+                    <th>City</th>
+                    <th>Interested</th>
+                    <th>Feedback</th>
+                    <!-- <th>Recording</th> -->
+                  </tr>
+                </thead>
+                <tbody id="callsTableBody">
+                  <!-- Populated by JS -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Empty State -->
+        <div id="emptyState" class="empty-state">
+          <div class="empty-icon">📊</div>
+          <div class="empty-text">No active campaign</div>
+          <div class="empty-subtext">Upload a CSV file to get started</div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      // const API_BASE = "https://campaign-call-backend.onrender.com";
+      const API_BASE = "http://localhost:8000";
+      let currentCampaignId = null;
+      let pollInterval = null;
+      let csvData = null;
+
+      // DOM Elements
+      const uploadSection = document.getElementById("uploadSection");
+      const campaignSection = document.getElementById("campaignSection");
+      const emptyState = document.getElementById("emptyState");
+      const uploadZone = document.getElementById("uploadZone");
+      const fileInput = document.getElementById("fileInput");
+      const campaignNameInput = document.getElementById("campaignName");
+      const uploadBtn = document.getElementById("uploadBtn");
+      const uploadStatus = document.getElementById("uploadStatus");
+      const startBtn = document.getElementById("startBtn");
+      const pauseBtn = document.getElementById("pauseBtn");
+      const deleteBtn = document.getElementById("deleteBtn");
+      const downloadBtn = document.getElementById("downloadBtn");
+      const callsTableBody = document.getElementById("callsTableBody");
+      const statusIndicator = document.getElementById("statusIndicator");
+
+      // Upload Zone Events
+      uploadZone.addEventListener("click", () => fileInput.click());
+
+      uploadZone.addEventListener("dragover", (e) => {
+        e.preventDefault();
+        uploadZone.classList.add("dragover");
+      });
+
+      uploadZone.addEventListener("dragleave", () => {
+        uploadZone.classList.remove("dragover");
+      });
+
+      uploadZone.addEventListener("drop", (e) => {
+        e.preventDefault();
+        uploadZone.classList.remove("dragover");
+        const file = e.dataTransfer.files[0];
+        if (file && file.name.endsWith(".csv")) {
+          handleFileSelect(file);
+        } else {
+          showAlert("Please upload a CSV file", "error");
+        }
+      });
+
+      fileInput.addEventListener("change", (e) => {
+        const file = e.target.files[0];
+        if (file) {
+          handleFileSelect(file);
+        }
+      });
+
+      function handleFileSelect(file) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const text = e.target.result;
+          csvData = parseCSV(text);
+
+          uploadStatus.innerHTML = `✓ File loaded: <strong>${file.name}</strong> (${csvData.length} records)`;
+          uploadStatus.style.color = "#16A34A";
+          uploadBtn.style.display = "block";
+        };
+        reader.readAsText(file);
+      }
+
+      function parseCSV(text) {
+        const lines = text.trim().split("\n");
+
+        // normalize headers → lowercase + trimmed
+        const headers = lines[0].split(",").map((h) => h.trim().toLowerCase());
+
+        const data = [];
+
+        for (let i = 1; i < lines.length; i++) {
+          const values = lines[i].split(",").map((v) => v.trim());
+          const row = {};
+
+          headers.forEach((h, idx) => {
+            row[h] = values[idx] || null;
+          });
+
+          data.push({
+            name: row.name || "Unknown",
+            phone: row.phone || "",
+          });
+        }
+
+        return data;
+      }
+
+      uploadBtn.addEventListener("click", async () => {
+        const campaignName =
+          campaignNameInput.value.trim() || "Unnamed Campaign";
+
+        if (!csvData || csvData.length === 0) {
+          showAlert("No data to upload", "error");
+          return;
+        }
+
+        try {
+          uploadBtn.disabled = true;
+          uploadBtn.innerHTML = '<span class="loading"></span> Creating...';
+          console.log("Uploading campaign with data:", csvData);
+
+          const response = await fetch(`${API_BASE}/api/campaigns/upload`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              name: campaignName,
+              calls: csvData.map((row) => ({
+                name: row.name || "Unknown",
+                phone: row.phone || "",
+                status: row.status || "pending",
+                feedback: row.feedback || null,
+                timestamp: row.timestamp || null,
+                recording_url: row.recording_url || null,
+              })),
+            }),
+          });
+
+          const result = await response.json();
+          currentCampaignId = result.campaign_id;
+
+          localStorage.setItem("currentCampaignId", currentCampaignId);
+
+          showAlert("Campaign created successfully", "success");
+          loadCampaign(currentCampaignId);
+        } catch (error) {
+          console.error("Upload error:", error);
+          showAlert("Upload failed: " + error.message, "error");
+        } finally {
+          uploadBtn.disabled = false;
+          uploadBtn.textContent = "Create Campaign";
+        }
+      });
+
+      async function loadCampaign(campaignId) {
+        try {
+          const response = await fetch(
+            `${API_BASE}/api/campaigns/${campaignId}`,
+          );
+          const data = await response.json();
+
+          uploadSection.style.display = "none";
+          emptyState.style.display = "none";
+          campaignSection.style.display = "block";
+
+          document.getElementById("campaignTitle").textContent =
+            data.campaign.name;
+          document.getElementById("campaignMeta").textContent =
+            `Created: ${new Date(data.campaign.created_at).toLocaleString()}`;
+
+          updateCallsTable(data.calls);
+          updateStats(campaignId);
+
+          if (data.state && data.state.is_running) {
+            startBtn.style.display = "none";
+            pauseBtn.style.display = "inline-block";
+            updateStatusIndicator(true);
+          } else {
+            startBtn.style.display = "inline-block";
+            pauseBtn.style.display = "none";
+            updateStatusIndicator(false);
+          }
+
+          startPolling(campaignId);
+        } catch (error) {
+          console.error("Load campaign error:", error);
+          showAlert("Failed to load campaign", "error");
+        }
+      }
+
+      function updateStatusIndicator(isRunning) {
+        const dot = statusIndicator.querySelector(".status-dot");
+        const text = statusIndicator.querySelector("span:last-child");
+
+        if (isRunning) {
+          dot.classList.remove("inactive");
+          text.textContent = "Campaign running";
+        } else {
+          dot.classList.add("inactive");
+          text.textContent = "Campaign paused";
+        }
+      }
+
+      function parseIntents(feedback) {
+        if (!feedback) return [];
+
+        const match = feedback.match(/Intents:\s*(.*)/i);
+        if (!match) return [];
+
+        return match[1].split(",").map((i) => i.trim());
+      }
+
+      function updateCallsTable(calls) {
+        callsTableBody.innerHTML = "";
+
+        calls.forEach((call, index) => {
+          console.log("Calls data:", calls);
+          const STATUS_LABELS = {
+            pending: "Pending",
+            calling: "Calling",
+            bot_connected: "Bot Connected",
+            user_connected: "User Connected",
+            bot_end: "Bot Ended",
+            user_end: "User Ended",
+            completed: "Completed",
+            failed: "Failed",
+            missed: "Missed",
+            rejected: "Rejected",
+          };
+
+          let displayStatus = STATUS_LABELS[call.status] || call.status;
+
+          const row = document.createElement("tr");
+          row.innerHTML = `
+            <td>${index + 1}</td>
+            <td>${call.name}</td>
+            <td>${call.phone}</td>
+            <td><span class="status-badge status-${call.status}">${displayStatus}</span></td>
+            <td>${
+              call.timestamp
+                ? new Date(call.timestamp).toLocaleString("en-IN", {
+                    timeZone: "Asia/Kolkata",
+                    day: "2-digit",
+                    month: "2-digit",
+                    year: "numeric",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                    second: "2-digit",
+                    hour12: true,
+                  })
+                : "--"
+            }</td>
+            <td>${call.duration ? call.duration + "s" : "--"}</td>
+            <td>${call.preferred_city || "--"}</td>
+            <td>${call.interested || "--"}</td>
+            <td class="truncate" title="${call.feedback || "--"}">${call.feedback ? call.feedback.substring(0, 50) + "..." : "--"}</td>
+          `;
+          callsTableBody.appendChild(row);
+        });
+      }
+
+      async function updateStats(campaignId) {
+        try {
+          const response = await fetch(
+            `${API_BASE}/api/campaigns/${campaignId}/stats`,
+          );
+          const stats = await response.json();
+
+          document.getElementById("statTotal").textContent = stats.total || 0;
+          document.getElementById("statCompleted").textContent =
+            stats.completed || 0;
+          document.getElementById("statFailed").textContent = stats.failed || 0;
+          document.getElementById("statPending").textContent =
+            stats.pending || 0;
+
+          const progress =
+            stats.total > 0 ? (stats.done / stats.total) * 100 : 0;
+
+          document.getElementById("progressBar").style.width = progress + "%";
+          document.getElementById("progressText").textContent =
+            Math.round(progress) + "%";
+
+          if (stats.is_running) {
+            startBtn.style.display = "none";
+            pauseBtn.style.display = "inline-block";
+            updateStatusIndicator(true);
+          } else {
+            startBtn.style.display = "inline-block";
+            pauseBtn.style.display = "none";
+            updateStatusIndicator(false);
+          }
+        } catch (error) {
+          console.error("Stats update error:", error);
+        }
+      }
+
+      function startPolling(campaignId) {
+        if (pollInterval) {
+          clearInterval(pollInterval);
+        }
+
+        pollInterval = setInterval(async () => {
+          await updateStats(campaignId);
+
+          try {
+            const response = await fetch(
+              `${API_BASE}/api/campaigns/${campaignId}`,
+            );
+            const data = await response.json();
+            updateCallsTable(data.calls);
+          } catch (error) {
+            console.error("Polling error:", error);
+          }
+        }, 2000);
+      }
+
+      startBtn.addEventListener("click", async () => {
+        if (!currentCampaignId) return;
+
+        try {
+          startBtn.disabled = true;
+          const response = await fetch(
+            `${API_BASE}/api/campaigns/${currentCampaignId}/start`,
+            { method: "POST" },
+          );
+          const result = await response.json();
+
+          if (
+            result.status === "started" ||
+            result.status === "already_running"
+          ) {
+            startBtn.style.display = "none";
+            pauseBtn.style.display = "inline-block";
+            updateStatusIndicator(true);
+            showAlert("Campaign started", "success");
+          }
+        } catch (error) {
+          console.error("Start error:", error);
+          showAlert("Failed to start campaign", "error");
+        } finally {
+          startBtn.disabled = false;
+        }
+      });
+
+      pauseBtn.addEventListener("click", async () => {
+        if (!currentCampaignId) return;
+
+        try {
+          pauseBtn.disabled = true;
+          const response = await fetch(
+            `${API_BASE}/api/campaigns/${currentCampaignId}/pause`,
+            { method: "POST" },
+          );
+          const result = await response.json();
+
+          if (result.status === "paused") {
+            startBtn.style.display = "inline-block";
+            pauseBtn.style.display = "none";
+            updateStatusIndicator(false);
+            showAlert("Campaign paused", "success");
+          }
+        } catch (error) {
+          console.error("Pause error:", error);
+          showAlert("Failed to pause campaign", "error");
+        } finally {
+          pauseBtn.disabled = false;
+        }
+      });
+
+      deleteBtn.addEventListener("click", async () => {
+        if (!currentCampaignId) return;
+
+        if (
+          !confirm(
+            "Are you sure you want to delete this campaign? This action cannot be undone.",
+          )
+        ) {
+          return;
+        }
+
+        try {
+          deleteBtn.disabled = true;
+          await fetch(`${API_BASE}/api/campaigns/${currentCampaignId}`, {
+            method: "DELETE",
+          });
+
+          localStorage.removeItem("currentCampaignId");
+          currentCampaignId = null;
+
+          if (pollInterval) {
+            clearInterval(pollInterval);
+          }
+
+          campaignSection.style.display = "none";
+          uploadSection.style.display = "block";
+          emptyState.style.display = "block";
+          updateStatusIndicator(false);
+
+          showAlert("Campaign deleted", "success");
+
+          uploadStatus.textContent = "";
+          campaignNameInput.value = "";
+          uploadBtn.style.display = "none";
+          csvData = null;
+        } catch (error) {
+          console.error("Delete error:", error);
+          showAlert("Failed to delete campaign", "error");
+        } finally {
+          deleteBtn.disabled = false;
+        }
+      });
+
+      downloadBtn.addEventListener("click", async () => {
+        if (!currentCampaignId) return;
+
+        try {
+          const response = await fetch(
+            `${API_BASE}/api/campaigns/${currentCampaignId}`,
+          );
+          const data = await response.json();
+
+          const headers = [
+            "ID",
+            "Name",
+            "Phone",
+            "Status",
+            "Timestamp",
+            "Duration",
+            "City",
+            "Interested",
+            "Feedback",
+            "Recording URL",
+            "Call SID",
+            "Error Message",
+          ];
+
+          const rows = data.calls.map((call, index) => {
+            const intents = parseIntents(call.feedback);
+
+            const STATUS_LABELS = {
+              pending: "Pending",
+              calling: "Calling",
+              bot_connected: "Bot Connected",
+              user_connected: "User Connected",
+              bot_end: "Bot Ended",
+              user_end: "User Ended",
+              completed: "Completed",
+              failed: "Failed",
+              missed: "Missed",
+              rejected: "Rejected",
+            };
+
+            let displayStatus = STATUS_LABELS[call.status] || call.status;
+
+            return [
+              index + 1,
+              call.name || "",
+              call.phone || "",
+              displayStatus || "",
+              call.timestamp ? new Date(call.timestamp).toLocaleString() : "",
+              call.duration || "",
+              call.preferred_city || "",
+              call.interested || "",
+              call.feedback || "",
+              call.recording_url || "",
+              call.call_sid || "",
+              call.error_message || "",
+            ].map((field) => {
+              const str = String(field);
+              if (
+                str.includes(",") ||
+                str.includes('"') ||
+                str.includes("\n")
+              ) {
+                return '"' + str.replace(/"/g, '""') + '"';
+              }
+              return str;
+            });
+          });
+
+          const csvContent = [
+            headers.join(","),
+            ...rows.map((row) => row.join(",")),
+          ].join("\n");
+
+          const blob = new Blob([csvContent], {
+            type: "text/csv;charset=utf-8;",
+          });
+          const link = document.createElement("a");
+          const url = URL.createObjectURL(blob);
+
+          const campaignName = data.campaign.name
+            .replace(/[^a-z0-9]/gi, "_")
+            .toLowerCase();
+          const timestamp = new Date().toISOString().split("T")[0];
+
+          link.setAttribute("href", url);
+          link.setAttribute("download", `${campaignName}_${timestamp}.csv`);
+          link.style.visibility = "hidden";
+
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+
+          showAlert("CSV downloaded successfully", "success");
+        } catch (error) {
+          console.error("Download error:", error);
+          showAlert("Failed to download CSV", "error");
+        }
+      });
+
+      function showAlert(message, type) {
+        const alertDiv = document.createElement("div");
+        alertDiv.className = `alert alert-${type}`;
+        alertDiv.textContent = message;
+
+        const mainContent = document.querySelector(".main-content");
+        mainContent.insertBefore(alertDiv, mainContent.firstChild);
+
+        setTimeout(() => {
+          alertDiv.remove();
+        }, 5000);
+      }
+
+      window.addEventListener("load", () => {
+        const savedCampaignId = localStorage.getItem("currentCampaignId");
+        if (savedCampaignId) {
+          currentCampaignId = savedCampaignId;
+          loadCampaign(savedCampaignId);
+        }
+      });
+
+      window.addEventListener("beforeunload", () => {
+        if (pollInterval) {
+          clearInterval(pollInterval);
+        }
+      });
+
+      const themeToggle = document.getElementById("themeToggle");
+
+      function applyTheme(theme) {
+        document.body.classList.toggle("dark", theme === "dark");
+        themeToggle.textContent = theme === "dark" ? "☀️ Light" : "🌙 Dark";
+        localStorage.setItem("theme", theme);
+      }
+
+      themeToggle.addEventListener("click", () => {
+        const isDark = document.body.classList.contains("dark");
+        applyTheme(isDark ? "light" : "dark");
+      });
+
+      window.addEventListener("load", () => {
+        const savedTheme = localStorage.getItem("theme") || "light";
+        applyTheme(savedTheme);
+      });
+    </script>
+  </body>
+</html>

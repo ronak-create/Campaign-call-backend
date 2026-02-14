@@ -12,7 +12,7 @@ router = APIRouter()
 async def webhook_session_start(request: Request):
     try:
         data = await request.json()
-        # print("Session Start Payload: ", data)
+        print("Session Start Payload: ", data)
         call_sid = data.get("external_id")
         current_conversation_id = data.get("conversation_id")
         previous_sessions = data.get("previous_sessions", {}).get("sessions", [])
@@ -30,13 +30,13 @@ async def webhook_session_start(request: Request):
                     continue
                 if not uow.calls.exists_by_conversation(conversation_id):
                     continue
-                # print(f"session: {session}")
+                print(f"session: {session}")
                 justification = session.get("call_outcome", {}).get("justification", "")
-                # print(f"justification: {justification}")
+                print(f"justification: {justification}")
                 intents = session.get("intents", [])
 
                 city = extract_city_from_session(session)
-                # print(f"extracted city: {city}")
+                print(f"extracted city: {city}")
 
                 interested = "no"
                 for intent_obj in intents:

@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 from fastapi import HTTPException
 import asyncio
 from app.services.exotel_service import make_call
-from app.tasks.campaign_tasks import enqueue_campaign_calls
+# from app.tasks.campaign_tasks import enqueue_campaign_calls
 from app.db.unit_of_work import UnitOfWork
 
 async def resume_campaigns():
@@ -16,7 +16,10 @@ async def resume_campaigns():
         running = uow.states.get_running_campaigns()
 
     for campaign in running:
-        enqueue_campaign_calls.delay(campaign["campaign_id"])
+        asyncio.create_task(
+            process_campaign(campaign["campaign_id"])
+        )
+
 
 
 async def upload_campaign(campaign: CampaignCreate):
@@ -63,7 +66,10 @@ async def start_campaign(campaign_id: str):
         uow.states.set_running(campaign_id, True)
         uow.campaigns.update_status(campaign_id, "running")
 
-    enqueue_campaign_calls.delay(campaign_id)
+    asyncio.create_task(
+            process_campaign(campaign_id)
+        )
+
 
     return {"status": "started"}
 

@@ -28,7 +28,7 @@ async def make_call(campaign_id: str, call_record: dict):
             'From': phone,
             'CallerId': settings.EXOTEL_CALLER_ID,
             'Url': f"http://my.exotel.com/{settings.EXOTEL_ACCOUNT_SID}/exoml/start_voice/{settings.EXOTEL_APP_SID}",
-            'StatusCallback': 'https://e105-2402-a00-142-98d-a4f0-211e-db5d-9e64.ngrok-free.app/webhooks/status-callback',
+            'StatusCallback': 'https://campaign-call-backend.onrender.com/webhooks/status-callback',
             'StatusCallbackContentType': 'application/json'
         }
 

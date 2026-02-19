@@ -4,6 +4,7 @@ from datetime import datetime as dt
 import json
 from app.db.unit_of_work import UnitOfWork
 from app.utils.helper import extract_city_from_session
+from app.utils.helper import extract_transcript_from_session
 
 router = APIRouter()
 
@@ -79,13 +80,14 @@ async def webhook_session_start(request: Request):
 
 @router.post("/webhooks/session-end")
 async def webhook_session_end(request: Request):
-
     try:
         data = await request.json()
-        print("data: ",data)
         call_sid = data.get('metadata', {}).get('call_sid')
         start_time_str = data.get('start_time')
         end_time_str = data.get('end_time')
+
+        if not call_sid:
+            return JSONResponse(status_code=200, content={"http_code": 200})
 
         duration_seconds = 0
 
@@ -93,9 +95,8 @@ async def webhook_session_end(request: Request):
             start_time = dt.fromisoformat(start_time_str.replace("Z", "+00:00"))
             end_time = dt.fromisoformat(end_time_str.replace("Z", "+00:00"))
             duration_seconds = int((end_time - start_time).total_seconds())
-        # print("duration_seconds", duration_seconds)
-        if not call_sid:
-            return JSONResponse(status_code=200, content={"http_code": 200})
+
+        transcript_text = extract_transcript_from_session(data)
 
         with UnitOfWork() as uow:
 
@@ -110,14 +111,22 @@ async def webhook_session_end(request: Request):
                 call_sid,
                 new_status,
                 duration_seconds
-            )   
+            )
+
+            # Only update transcript if we actually extracted something
+            if transcript_text:
+                uow.calls.update_transcript(
+                    call_sid,
+                    transcript_text
+                )
 
         return JSONResponse(
             status_code=200,
             content={"http_code": 200, "response": {"data": {}}}
         )
 
-    except Exception:
+    except Exception as e:
+        print("Session end error:", str(e))
         return JSONResponse(
             status_code=200,
             content={"http_code": 200, "response": {"data": {}}}

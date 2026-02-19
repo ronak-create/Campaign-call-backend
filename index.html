@@ -600,152 +600,218 @@
   </head>
   <body>
     <!-- Top Navigation -->
-    <div class="top-nav">
-      <div class="app-name">Campaign Manager</div>
-      <div class="nav-actions">
-        <button class="btn btn-sm" id="themeToggle">🌙 Dark</button>
-        <div class="status-indicator" id="statusIndicator">
-          <span class="status-dot inactive"></span>
-          <span>No active campaign</span>
-        </div>
+    <div
+      id="loginSection"
+      style="
+        display: none;
+        height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      "
+    >
+      <div style="width: 300px">
+        <h2 style="margin-bottom: 20px">Login</h2>
+        <input id="username" class="form-input" placeholder="Username" />
+        <input
+          id="password"
+          type="password"
+          class="form-input"
+          placeholder="Password"
+        />
+        <button
+          class="btn btn-primary"
+          id="loginBtn"
+          style="margin-top: 15px; width: 100%"
+        >
+          Login
+        </button>
+        <div
+          id="loginError"
+          style="color: red; font-size: 13px; margin-top: 10px"
+        ></div>
       </div>
     </div>
+    <div id="appWrapper">
+      <!-- existing entire app content -->
 
-    <div class="container">
-      <div class="main-content">
-        <!-- Upload Section -->
-        <div id="uploadSection">
-          <div class="card">
-            <div class="card-title">Campaign Setup</div>
-
-            <div class="upload-zone" id="uploadZone">
-              <div class="upload-icon">📄</div>
-              <div class="upload-text">
-                Drop CSV file here or click to browse
-              </div>
-              <div class="upload-subtext">
-                Supported format: CSV with name, phone columns
-              </div>
-              <input type="file" id="fileInput" accept=".csv" />
-            </div>
-
-            <input
-              type="text"
-              id="campaignName"
-              class="form-input"
-              placeholder="Enter campaign name..."
-            />
-
-            <div
-              id="uploadStatus"
-              style="margin-top: 12px; font-size: 13px; color: #6b7280"
-            ></div>
-
-            <button
-              class="btn btn-primary btn-upload-action"
-              id="uploadBtn"
-              style="display: none"
-            >
-              Create Campaign
-            </button>
+      <div class="top-nav">
+        <div class="app-name">Campaign Manager</div>
+        <div class="nav-actions">
+          <button class="btn btn-sm" id="themeToggle">🌙 Dark</button>
+          <div class="status-indicator" id="statusIndicator">
+            <span class="status-dot inactive"></span>
+            <span>No active campaign</span>
           </div>
+          <button class="btn btn-sm" id="logoutBtn">Logout</button>
         </div>
+      </div>
 
-        <!-- Campaign Section (Initially Hidden) -->
-        <div id="campaignSection" style="display: none">
-          <!-- Campaign Header -->
-          <div class="campaign-header">
-            <div class="campaign-info">
-              <h2 id="campaignTitle">Campaign Name</h2>
-              <div class="campaign-meta" id="campaignMeta">Created: --</div>
-            </div>
-            <div class="campaign-actions">
-              <button class="btn btn-primary" id="startBtn">
-                Start Campaign
-              </button>
-              <button class="btn" id="pauseBtn" style="display: none">
-                Pause
-              </button>
-              <button class="btn" id="downloadBtn">Download CSV</button>
-              <button class="btn btn-danger" id="deleteBtn">Delete</button>
-            </div>
-          </div>
+      <div class="container">
+        <div class="main-content">
+          <!-- Upload Section -->
+          <div id="uploadSection">
+            <div class="card">
+              <div class="card-title">Campaign Setup</div>
 
-          <!-- Stats Grid -->
-          <div class="stats-grid">
-            <div class="stat-card">
-              <div class="stat-label">Total Calls</div>
-              <div class="stat-value primary" id="statTotal">0</div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-label">Completed</div>
-              <div class="stat-value success" id="statCompleted">0</div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-label">Failed</div>
-              <div class="stat-value danger" id="statFailed">0</div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-label">Pending</div>
-              <div class="stat-value warning" id="statPending">0</div>
-            </div>
-          </div>
+              <div class="upload-zone" id="uploadZone">
+                <div class="upload-icon">📄</div>
+                <div class="upload-text">
+                  Drop CSV file here or click to browse
+                </div>
+                <div class="upload-subtext">
+                  Supported format: CSV with name, phone columns
+                </div>
+                <input type="file" id="fileInput" accept=".csv" />
+              </div>
 
-          <!-- Progress Bar -->
-          <div class="progress-container">
-            <div class="progress-label">
-              <span>Campaign Progress</span>
-              <span id="progressText">0%</span>
-            </div>
-            <div class="progress-bar-track">
+              <input
+                type="text"
+                id="campaignName"
+                class="form-input"
+                placeholder="Enter campaign name..."
+              />
+
               <div
-                class="progress-bar-fill"
-                id="progressBar"
-                style="width: 0%"
+                id="uploadStatus"
+                style="margin-top: 12px; font-size: 13px; color: #6b7280"
               ></div>
+
+              <button
+                class="btn btn-primary btn-upload-action"
+                id="uploadBtn"
+                style="display: none"
+              >
+                Create Campaign
+              </button>
             </div>
           </div>
 
-          <!-- Data Table -->
-          <div class="table-section">
-            <div class="table-header">
-              <div class="table-title">Call Records</div>
+          <!-- Campaign Section (Initially Hidden) -->
+          <div id="campaignSection" style="display: none">
+            <!-- Campaign Header -->
+            <div class="campaign-header">
+              <div class="campaign-info">
+                <h2 id="campaignTitle">Campaign Name</h2>
+                <div class="campaign-meta" id="campaignMeta">Created: --</div>
+              </div>
+              <div class="campaign-actions">
+                <button class="btn btn-primary" id="processBtn" disabled>
+                  Process Campaign
+                </button>
+
+                <button class="btn btn-primary" id="startBtn">
+                  Start Campaign
+                </button>
+                <button class="btn" id="pauseBtn" style="display: none">
+                  Pause
+                </button>
+                <button class="btn" id="downloadBtn">Download CSV</button>
+                <button class="btn btn-danger" id="deleteBtn">Delete</button>
+              </div>
             </div>
-            <div class="table-container">
-              <table>
-                <thead>
-                  <tr>
-                    <th>ID</th>
-                    <th>Name</th>
-                    <th>Phone</th>
-                    <th>Status</th>
-                    <th>Timestamp</th>
-                    <th>Duration</th>
-                    <th>City</th>
-                    <th>Interested</th>
-                    <th>Feedback</th>
-                    <!-- <th>Recording</th> -->
-                  </tr>
-                </thead>
-                <tbody id="callsTableBody">
-                  <!-- Populated by JS -->
-                </tbody>
-              </table>
+
+            <!-- Stats Grid -->
+            <div class="stats-grid">
+              <div class="stat-card">
+                <div class="stat-label">Total Calls</div>
+                <div class="stat-value primary" id="statTotal">0</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-label">Completed</div>
+                <div class="stat-value success" id="statCompleted">0</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-label">Failed</div>
+                <div class="stat-value danger" id="statFailed">0</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-label">Pending</div>
+                <div class="stat-value warning" id="statPending">0</div>
+              </div>
+            </div>
+
+            <!-- Progress Bar -->
+            <div class="progress-container">
+              <div class="progress-label">
+                <span>Campaign Progress</span>
+                <span id="progressText">0%</span>
+              </div>
+              <div class="progress-bar-track">
+                <div
+                  class="progress-bar-fill"
+                  id="progressBar"
+                  style="width: 0%"
+                ></div>
+              </div>
+            </div>
+
+            <!-- Data Table -->
+            <div class="table-section">
+              <div class="table-header">
+                <div class="table-title">Call Records</div>
+              </div>
+              <div class="table-container">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>ID</th>
+                      <th>Name</th>
+                      <th>Phone</th>
+                      <th>Status</th>
+                      <th>Timestamp</th>
+                      <th>Duration</th>
+                      <th>City</th>
+                      <th>Interested</th>
+                      <th>Feedback</th>
+                      <!-- <th>Recording</th> -->
+                    </tr>
+                  </thead>
+                  <tbody id="callsTableBody">
+                    <!-- Populated by JS -->
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
-        </div>
 
-        <!-- Empty State -->
-        <div id="emptyState" class="empty-state">
-          <div class="empty-icon">📊</div>
-          <div class="empty-text">No active campaign</div>
-          <div class="empty-subtext">Upload a CSV file to get started</div>
+          <!-- Empty State -->
+          <div id="emptyState" class="empty-state">
+            <div class="empty-icon">📊</div>
+            <div class="empty-text">No active campaign</div>
+            <div class="empty-subtext">Upload a CSV file to get started</div>
+          </div>
         </div>
       </div>
     </div>
-
     <script>
       const API_BASE = "https://campaign-call-backend.onrender.com";
+      // const API_BASE = "http://localhost:8000";
+      async function apiFetch(url, options = {}) {
+        if (!authToken) {
+          showLogin();
+          throw new Error("Not authenticated");
+        }
+
+        options.headers = {
+          ...(options.headers || {}),
+          Authorization: `Bearer ${authToken}`,
+        };
+
+        const response = await fetch(url, options);
+
+        if (response.status === 401) {
+          localStorage.removeItem("authToken");
+          authToken = null;
+          showLogin();
+          throw new Error("Session expired");
+        }
+
+        return response;
+      }
+
+      let authToken = localStorage.getItem("authToken");
+      // const API_BASE = "https://campaign-call-backend.onrender.com";
       // const API_BASE = "http://localhost:8000";
       let currentCampaignId = null;
       let pollInterval = null;
@@ -756,6 +822,8 @@
       const campaignSection = document.getElementById("campaignSection");
       const emptyState = document.getElementById("emptyState");
       const uploadZone = document.getElementById("uploadZone");
+      const processBtn = document.getElementById("processBtn");
+
       const fileInput = document.getElementById("fileInput");
       const campaignNameInput = document.getElementById("campaignName");
       const uploadBtn = document.getElementById("uploadBtn");
@@ -766,6 +834,48 @@
       const downloadBtn = document.getElementById("downloadBtn");
       const callsTableBody = document.getElementById("callsTableBody");
       const statusIndicator = document.getElementById("statusIndicator");
+      const loginSection = document.getElementById("loginSection");
+      const appWrapper = document.getElementById("appWrapper");
+      const loginBtn = document.getElementById("loginBtn");
+
+      document.getElementById("logoutBtn").addEventListener("click", () => {
+        localStorage.removeItem("authToken");
+        authToken = null;
+        showLogin();
+      });
+
+      function showLogin() {
+        loginSection.style.display = "flex";
+        appWrapper.style.display = "none";
+      }
+
+      function showApp() {
+        loginSection.style.display = "none";
+        appWrapper.style.display = "block";
+      }
+
+      loginBtn.addEventListener("click", async () => {
+        const username = document.getElementById("username").value;
+        const password = document.getElementById("password").value;
+
+        try {
+          const res = await fetch(`${API_BASE}/api/auth/login`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ username, password }),
+          });
+
+          if (!res.ok) throw new Error("Invalid credentials");
+
+          const data = await res.json();
+          authToken = data.access_token;
+          localStorage.setItem("authToken", authToken);
+
+          showApp();
+        } catch (err) {
+          document.getElementById("loginError").textContent = "Login failed";
+        }
+      });
 
       // Upload Zone Events
       uploadZone.addEventListener("click", () => fileInput.click());
@@ -849,7 +959,7 @@
           uploadBtn.innerHTML = '<span class="loading"></span> Creating...';
           console.log("Uploading campaign with data:", csvData);
 
-          const response = await fetch(`${API_BASE}/api/campaigns/upload`, {
+          const response = await apiFetch(`${API_BASE}/api/campaigns/upload`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -883,7 +993,7 @@
 
       async function loadCampaign(campaignId) {
         try {
-          const response = await fetch(
+          const response = await apiFetch(
             `${API_BASE}/api/campaigns/${campaignId}`,
           );
           const data = await response.json();
@@ -990,7 +1100,7 @@
 
       async function updateStats(campaignId) {
         try {
-          const response = await fetch(
+          const response = await apiFetch(
             `${API_BASE}/api/campaigns/${campaignId}/stats`,
           );
           const stats = await response.json();
@@ -1018,6 +1128,36 @@
             pauseBtn.style.display = "none";
             updateStatusIndicator(false);
           }
+          console.log("Stats fetched:", stats);
+          //if campaign is not started or completed, show process button
+          if (stats.completed + stats.failed === stats.total) {
+            processBtn.style.display = "inline-block";
+          } else {
+            processBtn.style.display = "none";
+          }
+
+          if (stats.analysis_status === "processing") {
+            // console.log("Analysis in progress...", stats.analysis_status);
+            processBtn.disabled = true;
+            processBtn.innerHTML =
+              '<span class="loading"></span> Processing...';
+          }
+
+          if (stats.analysis_status === "not_started") {
+            processBtn.innerHTML = "Start Analysis";
+            processBtn.disabled = false;
+          }
+
+          if (stats.analysis_status === "completed") {
+            // console.log("Analysis in progress...", stats.analysis_status);
+            processBtn.innerHTML = "Analysis Completed";
+            processBtn.disabled = true;
+          }
+
+          if (stats.analysis_status === "failed") {
+            processBtn.innerHTML = "Retry Analysis";
+            processBtn.disabled = false;
+          }
         } catch (error) {
           console.error("Stats update error:", error);
         }
@@ -1030,25 +1170,32 @@
 
         pollInterval = setInterval(async () => {
           await updateStats(campaignId);
-
-          try {
-            const response = await fetch(
-              `${API_BASE}/api/campaigns/${campaignId}`,
-            );
-            const data = await response.json();
-            updateCallsTable(data.calls);
-          } catch (error) {
-            console.error("Polling error:", error);
-          }
         }, 2000);
       }
+
+      processBtn.addEventListener("click", async () => {
+        if (!currentCampaignId) return;
+
+        try {
+          processBtn.disabled = true;
+          processBtn.innerHTML = '<span class="loading"></span> Processing...';
+
+          await apiFetch(
+            `${API_BASE}/api/campaigns/${currentCampaignId}/analyze`,
+            { method: "POST" },
+          );
+        } catch (error) {
+          console.error("Process error:", error);
+          showAlert("Failed to start analysis", "error");
+        }
+      });
 
       startBtn.addEventListener("click", async () => {
         if (!currentCampaignId) return;
 
         try {
           startBtn.disabled = true;
-          const response = await fetch(
+          const response = await apiFetch(
             `${API_BASE}/api/campaigns/${currentCampaignId}/start`,
             { method: "POST" },
           );
@@ -1076,7 +1223,7 @@
 
         try {
           pauseBtn.disabled = true;
-          const response = await fetch(
+          const response = await apiFetch(
             `${API_BASE}/api/campaigns/${currentCampaignId}/pause`,
             { method: "POST" },
           );
@@ -1109,7 +1256,7 @@
 
         try {
           deleteBtn.disabled = true;
-          await fetch(`${API_BASE}/api/campaigns/${currentCampaignId}`, {
+          await apiFetch(`${API_BASE}/api/campaigns/${currentCampaignId}`, {
             method: "DELETE",
           });
 
@@ -1143,7 +1290,7 @@
         if (!currentCampaignId) return;
 
         try {
-          const response = await fetch(
+          const response = await apiFetch(
             `${API_BASE}/api/campaigns/${currentCampaignId}`,
           );
           const data = await response.json();
@@ -1252,10 +1399,16 @@
       }
 
       window.addEventListener("load", () => {
-        const savedCampaignId = localStorage.getItem("currentCampaignId");
-        if (savedCampaignId) {
-          currentCampaignId = savedCampaignId;
-          loadCampaign(savedCampaignId);
+        if (!authToken) {
+          showLogin();
+        } else {
+          showApp();
+
+          const savedCampaignId = localStorage.getItem("currentCampaignId");
+          if (savedCampaignId) {
+            currentCampaignId = savedCampaignId;
+            loadCampaign(savedCampaignId);
+          }
         }
       });
 

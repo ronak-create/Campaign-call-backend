@@ -53,3 +53,49 @@ class CampaignStateRepository:
         )
         row = self.cursor.fetchone()
         return dict(row) if row else None
+    
+    def get_analysis_status(self, campaign_id: str):
+        self.cursor.execute("""
+            SELECT analysis_status FROM campaign_state
+            WHERE campaign_id = ?
+        """, (campaign_id,))
+        row = self.cursor.fetchone()
+        return row["analysis_status"] if row else None
+    
+    def get_analysis_status_and_calls(self, campaign_id: str):
+        self.cursor.execute("""
+            SELECT cs.analysis_status, COUNT(c.id) as total_calls
+            FROM campaign_state cs
+            LEFT JOIN calls c ON cs.campaign_id = c.campaign_id
+            WHERE cs.campaign_id = ?
+            GROUP BY cs.campaign_id
+        """, (campaign_id,))
+        row = self.cursor.fetchone()
+        return dict(row) if row else None
+    
+    def get_calls_for_analysis(self, campaign_id: str):
+        self.cursor.execute("""
+            SELECT *
+            FROM calls
+            WHERE campaign_id = ?
+            AND transcript IS NOT NULL
+            AND analysis_status = 'pending'
+        """, (campaign_id,))
+        return self.cursor.fetchall()
+
+    def update_analysis_status(self, campaign_id: str, status: str):
+        self.cursor.execute("""
+            UPDATE campaign_state
+            SET analysis_status = ?, last_updated = CURRENT_TIMESTAMP
+            WHERE campaign_id = ?
+        """, (status, campaign_id))
+    
+    def update_analysis_result(self, call_sid: str, city: str, interest: str, outcome: str):
+        self.cursor.execute("""
+            UPDATE calls
+            SET preferred_city = ?,
+                interested = ?,
+                feedback = ?,
+                analysis_status = 'completed'
+            WHERE call_sid = ?
+        """, (city, interest, outcome, call_sid))

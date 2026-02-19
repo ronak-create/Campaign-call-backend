@@ -1,12 +1,15 @@
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import datetime
 import asyncio
 from app.config import settings
+from app.utils.auth import verify_token
 from app.webhooks import session_wehbooks, transcript_webhook, status_callback
 from app.services.campaign_service import resume_campaigns
 from app.routers import campaign_router
 from app.db.init_db import init_db
+from app.routers import auth_router
+
 
   # multilingual (Hindi + English)
 
@@ -46,7 +49,7 @@ def health():
         "exotel_configured": bool(settings.EXOTEL_API_KEY)
     }
 
-@app.get("/config")
+@app.get("/config", dependencies=[Depends(verify_token)])
 def get_config():
     """Get current configuration (without sensitive data)"""
     return {
@@ -56,8 +59,8 @@ def get_config():
         "fetch_delay": settings.CALL_DETAILS_FETCH_DELAY
     }
 
-
 app.include_router(transcript_webhook.router)
 app.include_router(session_wehbooks.router)
 app.include_router(status_callback.router)
 app.include_router(campaign_router.router)
+app.include_router(auth_router.router)

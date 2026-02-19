@@ -7,6 +7,8 @@ import asyncio
 from app.services.exotel_service import make_call
 # from app.tasks.campaign_tasks import enqueue_campaign_calls
 from app.db.unit_of_work import UnitOfWork
+from app.utils.helper import clean_transcript
+from app.utils.analysis_helper import send_to_analysis_service
 
 async def resume_campaigns():
     """Resume campaigns that were running before shutdown"""
@@ -99,11 +101,12 @@ async def get_campaign(campaign_id: str):
 
         calls = uow.calls.get_by_campaign(campaign_id)
         state = uow.states.get_state(campaign_id)
-
+        analysis_status = uow.states.get_analysis_status(campaign_id)
     return {
         "campaign": campaign,
         "calls": calls,
-        "state": state
+        "state": state,
+        "analysis_status": analysis_status
     }
 
 
@@ -112,9 +115,21 @@ async def get_campaign_stats(campaign_id: str):
     with UnitOfWork() as uow:
         stats = uow.calls.get_campaign_stats(campaign_id)
         stats["is_running"] = uow.states.is_running(campaign_id)
-
+        stats["analysis_status"] = uow.states.get_analysis_status(campaign_id)
     return stats
 
+async def get_analysis_status_and_calls_func(campaign_id: str):
+
+    with UnitOfWork() as uow:
+        data = uow.states.get_analysis_status_and_calls(campaign_id)
+    
+    if not data:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+    
+    return {
+        "analysis_status": data["analysis_status"],
+        "calls": data["total_calls"],
+    }
 
 async def process_campaign(campaign_id: str):
 
@@ -144,3 +159,73 @@ async def delete_campaign(campaign_id: str):
         uow.campaigns.delete(campaign_id)
 
     return {"status": "deleted"}
+
+async def analyze_process_campaign(campaign_id: str):
+    print(f"Starting analysis for campaign {campaign_id}")
+    with UnitOfWork() as uow:
+        campaign = uow.states.get_analysis_status(campaign_id)
+        if not campaign:
+            raise HTTPException(status_code=404, detail="analysis status not found")
+
+        if campaign == "processing":
+            return {"status": "already_processing"}
+
+        uow.states.update_analysis_status(
+            campaign_id,
+            "processing"
+        )
+
+    asyncio.create_task(run_analysis_pipeline(campaign_id))
+
+    return {"status": "processing_started"}
+
+BATCH_SIZE = 5
+
+async def run_analysis_pipeline(campaign_id: str):
+    try:
+        with UnitOfWork() as uow:
+            calls = uow.states.get_calls_for_analysis(campaign_id)
+
+        if not calls:
+            with UnitOfWork() as uow:
+                uow.states.update_analysis_status(campaign_id, "completed")
+            return
+
+        # Create batches
+        batches = [
+            calls[i:i + BATCH_SIZE]
+            for i in range(0, len(calls), BATCH_SIZE)
+        ]
+
+        for batch in batches:
+            try:
+                payload = []
+
+                for call in batch:
+                    cleaned = clean_transcript(call["transcript"])
+                    payload.append({
+                        "call_sid": call["call_sid"],
+                        "transcript": cleaned
+                    })
+
+                results = await send_to_analysis_service(payload)
+
+                # results expected as list
+                for result in results:
+                    with UnitOfWork() as uow:
+                        uow.states.update_analysis_result(
+                            result.get("call_sid"),
+                            result.get("city"),
+                            result.get("interest"),
+                            result.get("outcome")
+                        )
+
+            except Exception as e:
+                print("Batch failed:", e)
+
+        with UnitOfWork() as uow:
+            uow.states.update_analysis_status(campaign_id, "completed")
+
+    except Exception:
+        with UnitOfWork() as uow:
+            uow.states.update_analysis_status(campaign_id, "failed")

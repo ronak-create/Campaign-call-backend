@@ -194,6 +194,7 @@ class CallRepository:
             return [dict(row) for row in self.cursor.fetchall()]
 
     def get_campaign_stats(self, campaign_id: str):
+        # also fetch analysis_status from cmapign_state
             self.cursor.execute("""
                 SELECT
                     COUNT(*) AS total,
@@ -203,10 +204,11 @@ class CallRepository:
                     SUM(CASE 
                         WHEN status IN ('completed','failed','missed','rejected','bot_end','user_end')
                         THEN 1 ELSE 0 
-                    END) AS done
+                    END) AS done,
+                    (SELECT analysis_status FROM campaign_state WHERE campaign_id = ?) AS analysis_status
                 FROM calls
                 WHERE campaign_id = ?
-            """, (campaign_id,))
+            """, (campaign_id,campaign_id,))
             return dict(self.cursor.fetchone())
     
     def get_by_id(self, call_id: int):
@@ -239,3 +241,18 @@ class CallRepository:
         """, (campaign_id,))
         row = self.cursor.fetchone()
         return row["count"]
+
+    def update_transcript(self, call_sid: str, transcript: str):
+        self.cursor.execute("""
+            UPDATE calls
+            SET transcript = ?, analysis_status = 'pending'
+            WHERE call_sid = ?
+        """, (transcript, call_sid))
+
+    def mark_call_analysis_failed(self, call_sid: str, error: str):
+        self.cursor.execute("""
+            UPDATE calls
+            SET analysis_status = 'failed',
+                error_message = ?
+            WHERE call_sid = ?
+        """, (error, call_sid))

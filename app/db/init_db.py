@@ -38,6 +38,8 @@ def init_db():
                 retry_count INTEGER DEFAULT 0,
                 preferred_city TEXT,
                 interested TEXT,
+                transcript TEXT,
+                analysis_status TEXT DEFAULT 'pending',
                 FOREIGN KEY (campaign_id) REFERENCES campaigns(id)
             )
         ''')
@@ -48,6 +50,7 @@ def init_db():
                 campaign_id TEXT PRIMARY KEY,
                 is_running INTEGER DEFAULT 0,
                 current_index INTEGER DEFAULT 0,
+                analysis_status TEXT DEFAULT 'not_started',
                 last_updated TEXT,
                 FOREIGN KEY (campaign_id) REFERENCES campaigns(id)
             )

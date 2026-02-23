@@ -543,6 +543,66 @@
         margin-top: 16px;
       }
 
+      /* Filter Bar */
+      .filter-bar {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        align-items: center;
+        padding: 12px 20px;
+        border-bottom: 1px solid #e5e7eb;
+        background: var(--bg-soft);
+      }
+
+      .filter-select {
+        padding: 6px 10px;
+        border: 1px solid #e5e7eb;
+        border-radius: 6px;
+        font-size: 13px;
+        font-family: inherit;
+        background: var(--bg-elevated);
+        color: var(--text);
+        cursor: pointer;
+        min-width: 130px;
+      }
+
+      .filter-select:focus {
+        outline: none;
+        border-color: #2563eb;
+        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+      }
+
+      .filter-label {
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.4px;
+      }
+
+      .filter-count {
+        font-size: 12px;
+        color: var(--text-muted);
+        margin-left: auto;
+      }
+
+      .btn-clear-filters {
+        padding: 6px 12px;
+        font-size: 13px;
+        border: 1px solid #e5e7eb;
+        background: var(--bg-elevated);
+        color: var(--text-muted);
+        border-radius: 6px;
+        cursor: pointer;
+        font-family: inherit;
+        transition: all 0.15s;
+      }
+
+      .btn-clear-filters:hover {
+        background: var(--hover-bg);
+        color: var(--text);
+      }
+
       /* Status indicator */
       .status-indicator {
         display: inline-flex;
@@ -751,6 +811,30 @@
               <div class="table-header">
                 <div class="table-title">Call Records</div>
               </div>
+              <div class="filter-bar">
+                <span class="filter-label">Filter:</span>
+                <select class="filter-select" id="filterStatus">
+                  <option value="">All Statuses</option>
+                  <option value="pending">Pending</option>
+                  <option value="calling">Calling</option>
+                  <option value="bot_connected">Bot Connected</option>
+                  <option value="user_connected">User Connected</option>
+                  <option value="bot_end">Bot Ended</option>
+                  <option value="user_end">User Ended</option>
+                  <option value="completed">Completed</option>
+                  <option value="failed">Failed</option>
+                  <option value="missed">Missed</option>
+                  <option value="rejected">Rejected</option>
+                </select>
+                <select class="filter-select" id="filterCity">
+                  <option value="">All Cities</option>
+                </select>
+                <select class="filter-select" id="filterInterested">
+                  <option value="">All Interested</option>
+                </select>
+                <button class="btn-clear-filters" id="clearFiltersBtn">Clear</button>
+                <span class="filter-count" id="filterCount"></span>
+              </div>
               <div class="table-container">
                 <table>
                   <thead>
@@ -816,6 +900,7 @@
       let currentCampaignId = null;
       let pollInterval = null;
       let csvData = null;
+      let allCalls = []; // store all calls for filtering
 
       // DOM Elements
       const uploadSection = document.getElementById("uploadSection");
@@ -837,6 +922,17 @@
       const loginSection = document.getElementById("loginSection");
       const appWrapper = document.getElementById("appWrapper");
       const loginBtn = document.getElementById("loginBtn");
+
+      // Filter event listeners
+      document.getElementById("filterStatus").addEventListener("change", applyFilters);
+      document.getElementById("filterCity").addEventListener("change", applyFilters);
+      document.getElementById("filterInterested").addEventListener("change", applyFilters);
+      document.getElementById("clearFiltersBtn").addEventListener("click", () => {
+        document.getElementById("filterStatus").value = "";
+        document.getElementById("filterCity").value = "";
+        document.getElementById("filterInterested").value = "";
+        applyFilters();
+      });
 
       document.getElementById("logoutBtn").addEventListener("click", () => {
         localStorage.removeItem("authToken");
@@ -1050,6 +1146,57 @@
       }
 
       function updateCallsTable(calls) {
+        allCalls = calls;
+        populateFilterOptions(calls);
+        applyFilters();
+      }
+
+      function populateFilterOptions(calls) {
+        const citySelect = document.getElementById("filterCity");
+        const interestedSelect = document.getElementById("filterInterested");
+
+        const currentCity = citySelect.value;
+        const currentInterested = interestedSelect.value;
+
+        const cities = [...new Set(calls.map(c => c.preferred_city).filter(Boolean))].sort();
+        const interesteds = [...new Set(calls.map(c => c.interested).filter(Boolean))].sort();
+
+        citySelect.innerHTML = '<option value="">All Cities</option>' +
+          cities.map(c => `<option value="${c}">${c}</option>`).join("");
+        interestedSelect.innerHTML = '<option value="">All Interested</option>' +
+          interesteds.map(i => `<option value="${i}">${i}</option>`).join("");
+
+        citySelect.value = currentCity;
+        interestedSelect.value = currentInterested;
+      }
+
+      function getFilteredCalls() {
+        const statusFilter = document.getElementById("filterStatus").value;
+        const cityFilter = document.getElementById("filterCity").value;
+        const interestedFilter = document.getElementById("filterInterested").value;
+
+        return allCalls.filter(call => {
+          if (statusFilter && call.status !== statusFilter) return false;
+          if (cityFilter && call.preferred_city !== cityFilter) return false;
+          if (interestedFilter && call.interested !== interestedFilter) return false;
+          return true;
+        });
+      }
+
+      function applyFilters() {
+        const filtered = getFilteredCalls();
+        renderCallsTable(filtered);
+        const total = allCalls.length;
+        const shown = filtered.length;
+        const countEl = document.getElementById("filterCount");
+        if (shown < total) {
+          countEl.textContent = `Showing ${shown} of ${total} records`;
+        } else {
+          countEl.textContent = `${total} records`;
+        }
+      }
+
+      function renderCallsTable(calls) {
         callsTableBody.innerHTML = "";
 
         calls.forEach((call, index) => {
@@ -1100,10 +1247,14 @@
 
       async function updateStats(campaignId) {
         try {
-          const response = await apiFetch(
-            `${API_BASE}/api/campaigns/${campaignId}/stats`,
-          );
-          const stats = await response.json();
+          const [statsResponse, callsResponse] = await Promise.all([
+            apiFetch(`${API_BASE}/api/campaigns/${campaignId}/stats`),
+            apiFetch(`${API_BASE}/api/campaigns/${campaignId}`),
+          ]);
+          const stats = await statsResponse.json();
+          const callsData = await callsResponse.json();
+
+          updateCallsTable(callsData.calls);
 
           document.getElementById("statTotal").textContent = stats.total || 0;
           document.getElementById("statCompleted").textContent =
@@ -1290,6 +1441,10 @@
         if (!currentCampaignId) return;
 
         try {
+          // Use filtered calls from in-memory data
+          const filteredCalls = getFilteredCalls();
+
+          // Still fetch campaign name for the filename
           const response = await apiFetch(
             `${API_BASE}/api/campaigns/${currentCampaignId}`,
           );
@@ -1310,9 +1465,7 @@
             "Error Message",
           ];
 
-          const rows = data.calls.map((call, index) => {
-            const intents = parseIntents(call.feedback);
-
+          const rows = filteredCalls.map((call, index) => {
             const STATUS_LABELS = {
               pending: "Pending",
               calling: "Calling",
@@ -1378,7 +1531,7 @@
           link.click();
           document.body.removeChild(link);
 
-          showAlert("CSV downloaded successfully", "success");
+          showAlert(`CSV downloaded (${filteredCalls.length} records)`, "success");
         } catch (error) {
           console.error("Download error:", error);
           showAlert("Failed to download CSV", "error");

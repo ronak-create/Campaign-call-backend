@@ -17,7 +17,7 @@ async def send_to_analysis_service(batch_payload: list) -> list:
         - call_sid
         - city (string or null)
         - interest (yes or no)
-        - outcome (result of the call)
+        - outcome (result of the call/if not eligible,why?)
 
         Transcripts: {json.dumps(batch_payload)}
         """

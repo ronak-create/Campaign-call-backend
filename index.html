@@ -347,7 +347,7 @@
 
       .table-container {
         overflow-x: auto;
-        max-height: 600px;
+        max-height: 350px; /* CHANGED from 600px */
         overflow-y: auto;
       }
 
@@ -756,8 +756,8 @@
                 <div class="campaign-meta" id="campaignMeta">Created: --</div>
               </div>
               <div class="campaign-actions">
-                <button class="btn btn-primary" id="processBtn" disabled>
-                  Process Campaign
+                <button class="btn btn-primary" id="processBtn">
+                  Start Analysis
                 </button>
 
                 <button class="btn btn-primary" id="startBtn">
@@ -895,8 +895,6 @@
       }
 
       let authToken = localStorage.getItem("authToken");
-      // const API_BASE = "https://campaign-call-backend.onrender.com";
-      // const API_BASE = "http://localhost:8000";
       let currentCampaignId = null;
       let pollInterval = null;
       let csvData = null;
@@ -1279,36 +1277,13 @@
             pauseBtn.style.display = "none";
             updateStatusIndicator(false);
           }
+
+          // processBtn is always visible and enabled — no show/hide/disable logic
+          processBtn.style.display = "inline-block";
+          processBtn.disabled = false;
+          processBtn.innerHTML = "Start Analysis";
+
           console.log("Stats fetched:", stats);
-          //if campaign is not started or completed, show process button
-          if (stats.completed + stats.failed === stats.total) {
-            processBtn.style.display = "inline-block";
-          } else {
-            processBtn.style.display = "none";
-          }
-
-          if (stats.analysis_status === "processing") {
-            // console.log("Analysis in progress...", stats.analysis_status);
-            processBtn.disabled = true;
-            processBtn.innerHTML =
-              '<span class="loading"></span> Processing...';
-          }
-
-          if (stats.analysis_status === "not_started") {
-            processBtn.innerHTML = "Start Analysis";
-            processBtn.disabled = false;
-          }
-
-          if (stats.analysis_status === "completed") {
-            // console.log("Analysis in progress...", stats.analysis_status);
-            processBtn.innerHTML = "Analysis Completed";
-            processBtn.disabled = true;
-          }
-
-          if (stats.analysis_status === "failed") {
-            processBtn.innerHTML = "Retry Analysis";
-            processBtn.disabled = false;
-          }
         } catch (error) {
           console.error("Stats update error:", error);
         }
@@ -1338,6 +1313,8 @@
         } catch (error) {
           console.error("Process error:", error);
           showAlert("Failed to start analysis", "error");
+          processBtn.disabled = false;
+          processBtn.innerHTML = "Start Analysis";
         }
       });
 

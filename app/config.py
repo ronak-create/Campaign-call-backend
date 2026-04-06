@@ -23,6 +23,9 @@ class Settings:
         self.REDIS_BROKER_URL = os.getenv('REDIS_BROKER_URL', 'redis://localhost:6379/0')
         self.REDIS_BACKEND_URL = os.getenv('REDIS_BACKEND_URL', 'redis://localhost:6379/1')
 
+        self.CALLBACK_BASE_URL = os.getenv('CALLBACK_BASE_URL', 'http://localhost:8000')
+        self.DATABASE_URL = os.getenv('DATABASE_URL')
+        self.SENTRY_DSN = os.getenv('SENTRY_DSN', '')
 
         # Optional: Validate required ones
         self._validate()

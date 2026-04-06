@@ -28,12 +28,12 @@ async def webhook_transcript_events(request: Request):
 
         # preferred_city = extract_preferred_city_from_events(events)
 
-        with UnitOfWork() as uow:
+        async with UnitOfWork() as uow:
 
             # if preferred_city:
-            #     uow.calls.update_preferred_city(call_sid, preferred_city)
+            #     await uow.calls.update_preferred_city(call_sid, preferred_city)
 
-            uow.calls.mark_bot_connected_if_needed(
+            await uow.calls.mark_bot_connected_if_needed(
                 call_sid
             )
 

@@ -14,8 +14,8 @@ async def resume_campaigns():
     """Resume campaigns that were running before shutdown"""
     await asyncio.sleep(2)
 
-    with UnitOfWork() as uow:
-        running = uow.states.get_running_campaigns()
+    async with UnitOfWork() as uow:
+        running = await uow.states.get_running_campaigns()
 
     for campaign in running:
         asyncio.create_task(
@@ -29,25 +29,25 @@ async def upload_campaign(campaign: CampaignCreate):
     campaign_id = str(uuid.uuid4())
     created_at = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
 
-    with UnitOfWork() as uow:
+    async with UnitOfWork() as uow:
 
-        uow.campaigns.create_campaign(
+        await uow.campaigns.create_campaign(
             campaign_id,
             campaign.name,
             created_at,
             len(campaign.calls)
         )
 
-        uow.calls.insert_calls_bulk(
+        await uow.calls.insert_calls_bulk(
             campaign_id,
             campaign.calls
         )
 
-        uow.states.initialize(
+        await uow.states.initialize(
             campaign_id,
             created_at
         )
-    
+
     return {
         "campaign_id": campaign_id,
         "status": "created",
@@ -57,16 +57,16 @@ async def upload_campaign(campaign: CampaignCreate):
 
 async def start_campaign(campaign_id: str):
 
-    with UnitOfWork() as uow:
+    async with UnitOfWork() as uow:
 
-        if not uow.campaigns.exists(campaign_id):
+        if not await uow.campaigns.exists(campaign_id):
             raise HTTPException(status_code=404, detail="Campaign not found")
 
-        if uow.states.is_running(campaign_id):
+        if await uow.states.is_running(campaign_id):
             return {"status": "already_running"}
 
-        uow.states.set_running(campaign_id, True)
-        uow.campaigns.update_status(campaign_id, "running")
+        await uow.states.set_running(campaign_id, True)
+        await uow.campaigns.update_status(campaign_id, "running")
 
     asyncio.create_task(
             process_campaign(campaign_id)
@@ -78,30 +78,30 @@ async def start_campaign(campaign_id: str):
 
 async def pause_campaign(campaign_id: str):
 
-    with UnitOfWork() as uow:
-        uow.states.pause(campaign_id)
-        uow.campaigns.mark_paused(campaign_id)
+    async with UnitOfWork() as uow:
+        await uow.states.pause(campaign_id)
+        await uow.campaigns.mark_paused(campaign_id)
 
     return {"status": "paused"}
 
 
 async def list_campaigns():
-    with UnitOfWork() as uow:
-        campaigns = uow.campaigns.list_with_state()
+    async with UnitOfWork() as uow:
+        campaigns = await uow.campaigns.list_with_state()
     return {"campaigns": campaigns}
 
 
 async def get_campaign(campaign_id: str):
 
-    with UnitOfWork() as uow:
-        campaign = uow.campaigns.get_by_id(campaign_id)
+    async with UnitOfWork() as uow:
+        campaign = await uow.campaigns.get_by_id(campaign_id)
 
         if not campaign:
             raise HTTPException(status_code=404, detail="Campaign not found")
 
-        calls = uow.calls.get_by_campaign(campaign_id)
-        state = uow.states.get_state(campaign_id)
-        analysis_status = uow.states.get_analysis_status(campaign_id)
+        calls = await uow.calls.get_by_campaign(campaign_id)
+        state = await uow.states.get_state(campaign_id)
+        analysis_status = await uow.states.get_analysis_status(campaign_id)
     return {
         "campaign": campaign,
         "calls": calls,
@@ -112,20 +112,20 @@ async def get_campaign(campaign_id: str):
 
 async def get_campaign_stats(campaign_id: str):
 
-    with UnitOfWork() as uow:
-        stats = uow.calls.get_campaign_stats(campaign_id)
-        stats["is_running"] = uow.states.is_running(campaign_id)
-        stats["analysis_status"] = uow.states.get_analysis_status(campaign_id)
+    async with UnitOfWork() as uow:
+        stats = await uow.calls.get_campaign_stats(campaign_id)
+        stats["is_running"] = await uow.states.is_running(campaign_id)
+        stats["analysis_status"] = await uow.states.get_analysis_status(campaign_id)
     return stats
 
 async def get_analysis_status_and_calls_func(campaign_id: str):
 
-    with UnitOfWork() as uow:
-        data = uow.states.get_analysis_status_and_calls(campaign_id)
-    
+    async with UnitOfWork() as uow:
+        data = await uow.states.get_analysis_status_and_calls(campaign_id)
+
     if not data:
         raise HTTPException(status_code=404, detail="Campaign not found")
-    
+
     return {
         "analysis_status": data["analysis_status"],
         "calls": data["total_calls"],
@@ -135,16 +135,16 @@ async def process_campaign(campaign_id: str):
 
     while True:
 
-        with UnitOfWork() as uow:
+        async with UnitOfWork() as uow:
 
-            if not uow.states.is_running(campaign_id):
+            if not await uow.states.is_running(campaign_id):
                 break
 
-            call = uow.calls.get_next_pending_call(campaign_id)
+            call = await uow.calls.get_next_pending_or_retryable(campaign_id)
 
             if not call:
-                uow.states.set_running(campaign_id, False)
-                uow.campaigns.update_status(campaign_id, "completed")
+                await uow.states.set_running(campaign_id, False)
+                await uow.campaigns.update_status(campaign_id, "completed")
                 break
 
         await make_call(campaign_id, call)
@@ -153,24 +153,24 @@ async def process_campaign(campaign_id: str):
 
 async def delete_campaign(campaign_id: str):
 
-    with UnitOfWork() as uow:
-        uow.states.delete(campaign_id)
-        uow.calls.delete_by_campaign(campaign_id)
-        uow.campaigns.delete(campaign_id)
+    async with UnitOfWork() as uow:
+        await uow.states.delete(campaign_id)
+        await uow.calls.delete_by_campaign(campaign_id)
+        await uow.campaigns.delete(campaign_id)
 
     return {"status": "deleted"}
 
 async def analyze_process_campaign(campaign_id: str):
     print(f"Starting analysis for campaign {campaign_id}")
-    with UnitOfWork() as uow:
-        campaign = uow.states.get_analysis_status(campaign_id)
+    async with UnitOfWork() as uow:
+        campaign = await uow.states.get_analysis_status(campaign_id)
         if not campaign:
             raise HTTPException(status_code=404, detail="analysis status not found")
 
         if campaign == "processing":
             return {"status": "already_processing"}
 
-        uow.states.update_analysis_status(
+        await uow.states.update_analysis_status(
             campaign_id,
             "processing"
         )
@@ -183,12 +183,12 @@ BATCH_SIZE = 5
 
 async def run_analysis_pipeline(campaign_id: str):
     try:
-        with UnitOfWork() as uow:
-            calls = uow.states.get_calls_for_analysis(campaign_id)
+        async with UnitOfWork() as uow:
+            calls = await uow.states.get_calls_for_analysis(campaign_id)
 
         if not calls:
-            with UnitOfWork() as uow:
-                uow.states.update_analysis_status(campaign_id, "completed")
+            async with UnitOfWork() as uow:
+                await uow.states.update_analysis_status(campaign_id, "completed")
             return
 
         # Create batches
@@ -212,8 +212,8 @@ async def run_analysis_pipeline(campaign_id: str):
 
                 # results expected as list
                 for result in results:
-                    with UnitOfWork() as uow:
-                        uow.states.update_analysis_result(
+                    async with UnitOfWork() as uow:
+                        await uow.states.update_analysis_result(
                             result.get("call_sid"),
                             result.get("city"),
                             result.get("interest"),
@@ -223,9 +223,9 @@ async def run_analysis_pipeline(campaign_id: str):
             except Exception as e:
                 print("Batch failed:", e)
 
-        with UnitOfWork() as uow:
-            uow.states.update_analysis_status(campaign_id, "completed")
+        async with UnitOfWork() as uow:
+            await uow.states.update_analysis_status(campaign_id, "completed")
 
     except Exception:
-        with UnitOfWork() as uow:
-            uow.states.update_analysis_status(campaign_id, "failed")
+        async with UnitOfWork() as uow:
+            await uow.states.update_analysis_status(campaign_id, "failed")

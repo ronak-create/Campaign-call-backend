@@ -1,13 +1,18 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from app.models.schemas import CampaignCreate
 from app.services import campaign_service
 from app.utils.auth import verify_token
+from slowapi import Limiter
+from slowapi.util import get_remote_address
+
+limiter = Limiter(key_func=get_remote_address)
 
 router = APIRouter(prefix="/api/campaigns", tags=["Campaigns"],dependencies=[Depends(verify_token)])
 
 
 @router.post("/upload")
-async def upload_campaign(campaign: CampaignCreate):
+@limiter.limit("10/minute")
+async def upload_campaign(request: Request, campaign: CampaignCreate):
     return await campaign_service.upload_campaign(campaign)
 
 

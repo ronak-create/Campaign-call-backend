@@ -1,6 +1,6 @@
 from app.db.database import get_db
 from app.config import settings
-import requests
+import httpx
 from datetime import datetime, timezone 
 from xml.etree import ElementTree as ET
 from app.config import settings
@@ -15,8 +15,8 @@ async def make_call(campaign_id: str, call_record: dict):
     print(f"📞 Calling: {name} ({phone})")
 
     # Mark calling (separate small transaction)
-    with UnitOfWork() as uow:
-        uow.calls.mark_calling(
+    async with UnitOfWork() as uow:
+        await uow.calls.mark_calling(
             call_id,
             datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
         )
@@ -28,12 +28,13 @@ async def make_call(campaign_id: str, call_record: dict):
             'From': phone,
             'CallerId': settings.EXOTEL_CALLER_ID,
             'Url': f"http://my.exotel.com/{settings.EXOTEL_ACCOUNT_SID}/exoml/start_voice/{settings.EXOTEL_APP_SID}",
-            'StatusCallback': 'https://campaign-call-backend.onrender.com/webhooks/status-callback',
+            'StatusCallback': f"{settings.CALLBACK_BASE_URL}/webhooks/status-callback",
             'StatusCallbackContentType': 'application/json'
         }
 
-        response = requests.post(url, data=data, timeout=10)
-        response.raise_for_status()
+        async with httpx.AsyncClient(timeout=10) as client:
+            response = await client.post(url, data=data)
+            response.raise_for_status()
         print("✅ Call request accepted:", response.text)
         root = ET.fromstring(response.text)
         call_element = root.find('.//Call')
@@ -45,8 +46,8 @@ async def make_call(campaign_id: str, call_record: dict):
         print(f"✓ Call initiated - SID: {call_sid}")
 
         # Save call_sid (small transaction)
-        with UnitOfWork() as uow:
-            uow.calls.save_call_sid(call_id, call_sid)
+        async with UnitOfWork() as uow:
+            await uow.calls.save_call_sid(call_id, call_sid)
 
     except Exception as e:
 
@@ -54,21 +55,22 @@ async def make_call(campaign_id: str, call_record: dict):
         print(f"✗ Call failed: {error_msg}")
 
         # Atomic failure update
-        with UnitOfWork() as uow:
-            uow.calls.mark_failed(
+        async with UnitOfWork() as uow:
+            await uow.calls.mark_failed(
                 call_id,
                 error_msg,
                 datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
             )
-            uow.campaigns.increment_failed(campaign_id)
+            await uow.campaigns.increment_failed(campaign_id)
 
 async def fetch_call_details(campaign_id: str, call_id: int, call_sid: str):
 
     try:
         url = f"https://{settings.EXOTEL_API_KEY}:{settings.EXOTEL_API_TOKEN}@{settings.EXOTEL_SUBDOMAIN}/v1/Accounts/{settings.EXOTEL_ACCOUNT_SID}/Calls/{call_sid}"
 
-        response = requests.get(url, timeout=10)
-        response.raise_for_status()
+        async with httpx.AsyncClient(timeout=10) as client:
+            response = await client.get(url)
+            response.raise_for_status()
 
         root = ET.fromstring(response.text)
         call_element = root.find('.//Call')
@@ -91,9 +93,9 @@ async def fetch_call_details(campaign_id: str, call_id: int, call_sid: str):
 
         print(f"✓ Status: {final_status} | Duration: {duration}s")
 
-        with UnitOfWork() as uow:
+        async with UnitOfWork() as uow:
 
-            uow.calls.update_after_fetch(
+            await uow.calls.update_after_fetch(
                 call_id,
                 final_status,
                 duration,
@@ -103,17 +105,17 @@ async def fetch_call_details(campaign_id: str, call_id: int, call_sid: str):
             )
 
             if final_status == "completed":
-                uow.campaigns.increment_completed(campaign_id)
+                await uow.campaigns.increment_completed(campaign_id)
 
             elif final_status == "failed":
-                uow.campaigns.increment_failed(campaign_id)
+                await uow.campaigns.increment_failed(campaign_id)
 
     except Exception as e:
         print(f"⚠ Error fetching details: {e}")
 
         # fallback minimal safe update
-        with UnitOfWork() as uow:
-            uow.calls.mark_failed(
+        async with UnitOfWork() as uow:
+            await uow.calls.mark_failed(
                 call_id,
                 str(e),
                 datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ")

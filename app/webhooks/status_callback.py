@@ -33,16 +33,16 @@ async def exotel_status_callback(request: Request):
     if not call_sid or not final_status:
         return JSONResponse(status_code=200, content={"ok": True})
 
-    with UnitOfWork() as uow:
+    async with UnitOfWork() as uow:
 
-        row = uow.calls.get_call_status_and_campaign(call_sid)
+        row = await uow.calls.get_call_status_and_campaign(call_sid)
 
         if not row or row["status"] in ("completed", "failed", "missed", "rejected"):
             return JSONResponse(status_code=200, content={"ok": True})
 
         timestamp = datetime.datetime.utcnow().isoformat()
 
-        uow.calls.update_status_from_callback(
+        await uow.calls.update_status_from_callback(
             call_sid,
             final_status,
             recording_url,
@@ -50,9 +50,9 @@ async def exotel_status_callback(request: Request):
         )
 
         if final_status == "completed":
-            uow.campaigns.increment_completed(row["campaign_id"])
+            await uow.campaigns.increment_completed(row["campaign_id"])
 
         elif final_status == "failed":
-            uow.campaigns.increment_failed(row["campaign_id"])
+            await uow.campaigns.increment_failed(row["campaign_id"])
 
     return JSONResponse(status_code=200, content={"ok": True})

@@ -18,10 +18,10 @@ async def webhook_session_start(request: Request):
         current_conversation_id = data.get("conversation_id")
         previous_sessions = data.get("previous_sessions", {}).get("sessions", [])
 
-        with UnitOfWork() as uow:
+        async with UnitOfWork() as uow:
 
             if call_sid:
-                uow.calls.mark_bot_connected(
+                await uow.calls.mark_bot_connected(
                     call_sid,
                     current_conversation_id
                 )
@@ -29,7 +29,7 @@ async def webhook_session_start(request: Request):
                 conversation_id = session.get("conversation_id")
                 if not conversation_id:
                     continue
-                if not uow.calls.exists_by_conversation(conversation_id):
+                if not await uow.calls.exists_by_conversation(conversation_id):
                     continue
                 print(f"session: {session}")
                 justification = session.get("call_outcome", {}).get("justification", "")
@@ -44,7 +44,7 @@ async def webhook_session_start(request: Request):
                     if intent_obj.get("intent", "").replace(" ", "") == "RIDER_RESEARCH":
                         interested = "yes"
                         break
-                uow.calls.update_justification_and_interest(
+                await uow.calls.update_justification_and_interest(
                     conversation_id,
                     city,
                     justification,
@@ -98,16 +98,16 @@ async def webhook_session_end(request: Request):
 
         transcript_text = extract_transcript_from_session(data)
 
-        with UnitOfWork() as uow:
+        async with UnitOfWork() as uow:
 
-            current = uow.calls.get_status_by_sid(call_sid)
+            current = await uow.calls.get_status_by_sid(call_sid)
 
             if current and current["status"] == "user_connected":
                 new_status = "user_end"
             else:
                 new_status = "bot_end"
 
-            uow.calls.mark_session_end(
+            await uow.calls.mark_session_end(
                 call_sid,
                 new_status,
                 duration_seconds
@@ -115,7 +115,7 @@ async def webhook_session_end(request: Request):
 
             # Only update transcript if we actually extracted something
             if transcript_text:
-                uow.calls.update_transcript(
+                await uow.calls.update_transcript(
                     call_sid,
                     transcript_text
                 )
